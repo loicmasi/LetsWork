@@ -155,7 +155,7 @@ struct CalendarIslandTests {
     let island = IslandModel(metrics: IslandMetrics(notch: NotchGeometry(size: CGSize(width: 185, height: 32), hasNotch: true)))
 
     private func coordinator() -> ActivityCoordinator {
-        ActivityCoordinator(island: island, media: MediaService(), hud: HUDService(), calendar: CalendarService(providers: []))
+        ActivityCoordinator(island: island, media: MediaService(), hud: HUDService(), calendar: CalendarService(providers: []), notifications: NotificationService())
     }
 
     @Test func upcomingMeetingShowsTheCalendarCompact() {

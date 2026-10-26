@@ -25,10 +25,16 @@ struct IslandView: View {
         .clipShape(shape)
         .contentShape(shape)
         .onTapGesture {
-            // Un clic sur l'alerte la referme ; ailleurs, il épingle l'Island.
-            if state == .alert {
+            // Un clic sur l'alerte la referme ; sur une notification, il ouvre l'app ; ailleurs, il épingle l'Island.
+            switch state {
+            case .alert:
                 model.setAlert(nil)
-            } else {
+            case .notification:
+                if let notification = model.notification {
+                    NotificationApp.open(bundleIdentifier: notification.bundleIdentifier)
+                }
+                model.onNotificationTap?()
+            default:
                 model.togglePinned()
             }
         }
@@ -69,6 +75,10 @@ struct IslandView: View {
                     calendar.join(event)
                     model.setAlert(nil)
                 }
+            }
+        case .notification:
+            if let notification = model.notification {
+                NotificationPopupView(notification: notification, notch: metrics.notch)
             }
         case .hud:
             if let hud = model.hud {

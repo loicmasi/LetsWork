@@ -15,6 +15,7 @@ Ce document décrit **ce que fait** l'application. La mise en place technique du
 - [F1 — Gestion des médias](#f1--gestion-des-médias)
 - [F2 — HUD volume et luminosité](#f2--hud-volume-et-luminosité)
 - [F3 — Calendrier multi-sources](#f3--calendrier-multi-sources)
+- [F4 — Notifications des apps](#f4--notifications-des-apps)
 - [Exigences non fonctionnelles](#exigences-non-fonctionnelles)
 - [Jalons](#jalons)
 - [Questions ouvertes](#questions-ouvertes)
@@ -297,6 +298,52 @@ Toutes les sources implémentent une même interface `CalendarProvider` ; un agr
 
 ---
 
+## F4 — Notifications des apps
+
+### Objectif
+
+Afficher les notifications des autres apps (Messages, Slack, Mail…) dans une pop-up de l'Island, au style de l'aperçu d'un titre musical, **à la place** des bannières de macOS.
+
+### Fonctionnement
+
+- **Lecture** : macOS n'offre aucune API pour lire les notifications des autres apps. LetsWork lit la base du centre de notifications (`~/Library/Group Containers/group.com.apple.usernoted/db2/db`, SQLite, tables `app` et `record`, champ `data` en plist avec `req` › `titl`, `subt`, `body`). Cette base est protégée : LetsWork a besoin de l'**accès complet au disque**.
+- **Détection** : surveillance directe (kqueue) du dossier de la base et des fichiers `db` et `db-wal`, puis lecture des enregistrements plus récents que le dernier vu ; vérification de secours toutes les 10 s. FSEvents ne remonte rien pour ce dossier protégé. Seules les notifications reçues après le lancement de LetsWork sont affichées.
+- **Remplacement des bannières** : aucune API ne permet de masquer les bannières de macOS. L'utilisateur crée un mode Concentration « LetsWork » qui n'autorise aucune app et l'active ; les notifications restent dans le centre de notifications, et LetsWork les affiche.
+
+### Affichage
+
+| Élément | Contenu |
+|---|---|
+| Ailes | Icône de l'app à gauche, nom de l'app à droite. |
+| Sous l'encoche | Titre en gras (sinon sous-titre, sinon nom de l'app) ; dessous, sous-titre et texte, tronqués. |
+| Durée | 5 s ; les notifications suivantes attendent leur tour. |
+| Clic | Ouvre l'app d'origine (macOS ne permet pas d'ouvrir la notification elle-même) et passe à la suivante. |
+| Priorité | Après le HUD, le survol et l'alerte de réunion ; avant l'aperçu de piste et le compact. |
+
+### Confidentialité
+
+- Lecture locale uniquement : rien n'est enregistré ni envoyé.
+- Le journal ne contient jamais le contenu des notifications, seulement les noms de tables, de colonnes et de clés en cas de format inattendu.
+- L'accès complet au disque donne à LetsWork l'accès à tous les fichiers de l'utilisateur ; il est demandé uniquement pour cette fonctionnalité, désactivable dans les réglages.
+
+### Limites connues
+
+- **Délai d'environ 5 s** : macOS n'écrit la notification dans sa base qu'environ 5 s après l'envoi (mesuré sur macOS 27.0.1, toutes tables comprises) ; LetsWork l'affiche dès cette écriture. Le tri intelligent du mode Concentration peut y contribuer.
+- **Format privé** : la base et son format peuvent changer à chaque mise à jour de macOS ; Apple l'a déjà déplacée et protégée dans macOS 15. Structure constatée sur macOS 27.0.1 : identique à celle attendue (`app`, `record` › `data` › `req`).
+- **Mode Concentration requis** pour masquer les bannières ; sans lui, LetsWork affiche les notifications en plus des bannières.
+- **Pas d'actions** : impossible de répondre ou d'utiliser les boutons d'une notification depuis LetsWork.
+- Une notification arrivée pendant que l'Island est survolée peut passer inaperçue.
+
+### Critères d'acceptation
+
+- [ ] Avec l'accès complet au disque, une notification de Messages ou Slack s'affiche dans l'Island dès que macOS l'a enregistrée (environ 5 s).
+- [ ] Avec le mode Concentration « LetsWork » actif, aucune bannière de macOS n'apparaît.
+- [ ] Plusieurs notifications rapprochées s'affichent l'une après l'autre.
+- [ ] Un clic ouvre l'app d'origine.
+- [ ] Sans l'accès complet au disque, les réglages l'indiquent et LetsWork démarre la lecture dès qu'il est accordé.
+
+---
+
 ## Exigences non fonctionnelles
 
 | Domaine | Exigence |
@@ -321,6 +368,7 @@ Toutes les sources implémentent une même interface `CalendarProvider` ; un agr
 | **M2 — HUD** | Spike touches/HUD natif, event tap, Core Audio, DisplayServices, vue HUD, assistant d'autorisation Accessibilité. | Critères d'acceptation F2. | Validé : clavier intégré et Logitech MX Keys S (volume, muet, luminosité) |
 | **M3 — Calendrier** | EventKit, vues, alertes, détection de visio ; puis fournisseurs Google et Microsoft Graph. | Critères d'acceptation F3. | EventKit : accès et lecture des événements constatés sur la machine ; compact, alerte et « Rejoindre » à valider ; Google et Microsoft Graph à faire |
 | **M4 — Finition** | Assistant de premier lancement, localisation, accessibilité, signature Developer ID, notarisation, mises à jour (Sparkle). | DMG notarisé installable sur un autre Mac. | À faire |
+| **F4 — Notifications** | Lecture de la base du centre de notifications, pop-up dans l'Island, file d'attente, réglages et accès complet au disque. | Critères d'acceptation F4. | Validé sur macOS 27.0.1 : lecture, décodage et pop-up ; délai d'environ 5 s imposé par macOS |
 
 ---
 

@@ -7,6 +7,8 @@ enum IslandState: Equatable {
     case peek
     /// Alerte de réunion imminente, temporaire.
     case alert
+    /// Notification d'une autre app, temporaire, au style de l'aperçu de piste.
+    case notification
     /// Indicateur temporaire de volume ou de luminosité.
     case hud
     case expanded
@@ -26,15 +28,17 @@ struct IslandInputs: Equatable {
     var isPeeking = false
     var isShowingHUD = false
     var isShowingAlert = false
+    var isShowingNotification = false
 }
 
 extension IslandState {
-    /// Le HUD interrompt tout ; puis le survol ou l'épinglage, l'alerte de réunion, l'aperçu de piste
-    /// et enfin l'activité de fond (FEATURES.md, F0 › Arbitrage).
+    /// Le HUD interrompt tout ; puis le survol ou l'épinglage, l'alerte de réunion, la notification,
+    /// l'aperçu de piste et enfin l'activité de fond (FEATURES.md, F0 › Arbitrage).
     static func resolve(_ inputs: IslandInputs) -> IslandState {
         if inputs.isShowingHUD { return .hud }
         if inputs.isPinned || inputs.isHovering { return .expanded }
         if inputs.isShowingAlert { return .alert }
+        if inputs.isShowingNotification { return .notification }
         guard inputs.hasActivity else { return .closed }
         return inputs.isPeeking ? .peek : .compact
     }

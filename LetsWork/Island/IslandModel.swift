@@ -13,8 +13,12 @@ final class IslandModel {
     private(set) var activity: IslandActivity?
     private(set) var hud: HUDState?
     private(set) var alert: CalendarEvent?
+    private(set) var notification: SystemNotification?
     /// Page affichée à l'état étendu ; conservée d'une ouverture à l'autre.
     private(set) var selectedTab: IslandTab = .home
+
+    /// Clic sur la notification affichée : le coordinateur la masque et passe à la suivante.
+    @ObservationIgnored var onNotificationTap: (() -> Void)?
 
     @ObservationIgnored private var inputs = IslandInputs()
     @ObservationIgnored private var pendingTransition: Task<Void, Never>?
@@ -55,6 +59,13 @@ final class IslandModel {
 
     func selectTab(_ tab: IslandTab) {
         selectedTab = tab
+    }
+
+    /// `nil` masque la notification.
+    func setNotification(_ notification: SystemNotification?) {
+        self.notification = notification
+        inputs.isShowingNotification = notification != nil
+        resolveNow()
     }
 
     /// `nil` masque l'alerte de réunion.

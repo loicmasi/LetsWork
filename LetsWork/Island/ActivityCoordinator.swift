@@ -24,6 +24,8 @@ final class ActivityCoordinator {
     static let hudDuration: Duration = .milliseconds(1500)
     /// Durée d'affichage de l'alerte de réunion, sauf clic.
     static let alertDuration: Duration = .seconds(10)
+    /// Durée d'affichage d'une notification ; les suivantes attendent leur tour.
+    static let notificationDuration: Duration = .seconds(5)
 
     private let island: IslandModel
     private var isMediaActive = false
@@ -32,8 +34,10 @@ final class ActivityCoordinator {
     private var graceTask: Task<Void, Never>?
     private var hudTask: Task<Void, Never>?
     private var alertTask: Task<Void, Never>?
+    private var notificationTask: Task<Void, Never>?
+    private var pendingNotifications: [SystemNotification] = []
 
-    init(island: IslandModel, media: MediaService, hud: HUDService, calendar: CalendarService) {
+    init(island: IslandModel, media: MediaService, hud: HUDService, calendar: CalendarService, notifications: NotificationService) {
         self.island = island
         media.onChange = { [weak self] previous, current in
             self?.mediaDidChange(from: previous, to: current)
@@ -46,6 +50,36 @@ final class ActivityCoordinator {
         }
         calendar.onAlert = { [weak self] event in
             self?.showAlert(event)
+        }
+        notifications.onNotification = { [weak self] notification in
+            self?.showNotification(notification)
+        }
+        island.onNotificationTap = { [weak self] in
+            self?.dismissNotification()
+        }
+    }
+
+    /// Affiche la notification, ou la met en file si une autre est déjà affichée.
+    func showNotification(_ notification: SystemNotification) {
+        guard island.notification == nil else {
+            pendingNotifications.append(notification)
+            return
+        }
+        island.setNotification(notification)
+        notificationTask?.cancel()
+        notificationTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.notificationDuration)
+            guard !Task.isCancelled else { return }
+            self?.dismissNotification()
+        }
+    }
+
+    /// Masque la notification affichée (délai écoulé ou clic) et passe à la suivante.
+    func dismissNotification() {
+        notificationTask?.cancel()
+        island.setNotification(nil)
+        if !pendingNotifications.isEmpty {
+            showNotification(pendingNotifications.removeFirst())
         }
     }
 

@@ -5,6 +5,7 @@ struct SettingsView: View {
     let media: MediaService
     @Bindable var hud: HUDService
     @Bindable var calendar: CalendarService
+    @Bindable var notifications: NotificationService
 
     @AppStorage(AppSettings.displayTargetKey) private var displayTarget: DisplayTarget = .notchScreen
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
@@ -93,6 +94,38 @@ struct SettingsView: View {
                             Text("\(minutes) min").tag(minutes)
                         }
                     }
+                }
+            }
+            Section("Notifications") {
+                Toggle("Afficher les notifications des apps dans l'Island", isOn: $notifications.isEnabled)
+                switch notifications.status {
+                case .disabled:
+                    EmptyView()
+                case .active:
+                    LabeledContent("Lecture des notifications") {
+                        Label("Active", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    }
+                case .needsFullDiskAccess:
+                    LabeledContent("Accès complet au disque") {
+                        Button("Réglages Système", action: notifications.openFullDiskAccessSettings)
+                    }
+                    Text("La base des notifications de macOS est protégée. Ajoutez LetsWork à la liste « Accès complet au disque » ; la lecture démarre d'elle-même.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                case .unavailable(let message):
+                    Text(message)
+                        .font(.callout)
+                        .foregroundStyle(.red)
+                }
+                if notifications.isEnabled {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Pour masquer les bannières de macOS : créez un mode Concentration « LetsWork » qui n'autorise aucune app, puis activez-le depuis le Centre de contrôle. Les notifications restent dans le centre de notifications, et LetsWork les affiche.")
+                        Text("Les notifications sont lues sur ce Mac uniquement : rien n'est enregistré ni envoyé.")
+                        Button("Ouvrir Réglages Système › Concentration", action: notifications.openFocusSettings)
+                    }
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
                 }
             }
             if calendar.access == .granted, !calendar.calendars.isEmpty {

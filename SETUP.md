@@ -140,7 +140,7 @@ make open
 | `make project` | Régénère `LetsWork.xcodeproj` depuis `project.yml`. |
 | `make open` | Régénère puis ouvre le projet dans Xcode. |
 | `make build` | Compile la configuration Debug dans `build/DerivedData`. |
-| `make run` | Compile, quitte l'instance en cours et lance ce build. |
+| `make run` | Compile, quitte l'instance en cours (y compris l'app installée dans Applications) et lance ce build. |
 | `make test` | Lance les tests unitaires. |
 | `make adapter` | Compile `MediaRemoteAdapter.framework` dans `Vendor/build/` (M1). |
 
@@ -205,10 +205,12 @@ L'adaptateur est un processus enfant de l'app. Si l'app est tuée sans se termin
 |---|---|---|
 | Accessibilité | F2 (event tap) | Réglages Système › Confidentialité et sécurité › Accessibilité |
 | Calendriers (accès complet) | F3 | Onglet Calendrier ou Réglages › Calendrier › « Autoriser… », puis › Calendriers |
+| Accès complet au disque | F4 (lecture des notifications) | Réglages Système › Confidentialité et sécurité › Accès complet au disque › + › LetsWork |
 | Automatisation (Musique, Spotify) | F1, canal de repli | Invite système au premier Apple Event, puis › Automatisation |
 
 - **Calendriers** (M3) : demandés depuis l'onglet Calendrier ou Réglages › Calendrier, jamais au lancement.
 - **Accessibilité** (M2) : demandée depuis Réglages › Volume et luminosité › « Autoriser… ». Sans elle, LetsWork n'intercepte rien et les indicateurs de macOS restent affichés. L'app détecte l'autorisation sans redémarrage.
+- **Accès complet au disque** (F4) : à ajouter à la main dans Réglages Système, pour la copie de LetsWork que tu lances (build de développement ou app installée). La lecture démarre d'elle-même dans les 10 s.
 - **Automatisation** (M1) : seulement pour le repli AppleScript, au premier clic sur un contrôle de lecture.
 
 **Autorisations et builds de développement** : macOS rattache une autorisation à l'*exigence désignée* de la signature. Pour une signature ad hoc, c'est par défaut l'empreinte du binaire : chaque build perdrait l'autorisation Accessibilité (l'app resterait cochée dans la liste sans être reconnue).
@@ -293,14 +295,20 @@ LetsWork/
 │   │   │   ├── BrightnessController.swift  luminosité de l'écran intégré principal
 │   │   │   ├── HUDService.swift        @Observable : autorisation, interception, retour sonore
 │   │   │   └── HUDView.swift           icône et jauge dans les ailes de l'Island
-│   │   └── Calendar/
-│   │       ├── CalendarModel.swift     événement, liens de visio, délais, fusion, événement du compact et alertes
-│   │       ├── EventKitProvider.swift  protocole CalendarProvider et source EventKit
-│   │       ├── CalendarService.swift   @Observable : accès, filtres, fenêtre de 7 jours, réveils programmés
-│   │       ├── CalendarViews.swift     compact, alerte, onglet Calendrier
-│   │       ├── MonthCalendarView.swift mini-calendrier du mois de l'accueil
-│   │       ├── EventDraft.swift        brouillon d'événement : valeurs par défaut, validation
-│   │       └── EventEditor.swift       fenêtre « Nouvel événement »
+│   │   ├── Calendar/
+│   │   │   ├── CalendarModel.swift     événement, liens de visio, délais, fusion, événement du compact et alertes
+│   │   │   ├── EventKitProvider.swift  protocole CalendarProvider et source EventKit
+│   │   │   ├── CalendarService.swift   @Observable : accès, filtres, fenêtre de 7 jours, réveils programmés
+│   │   │   ├── CalendarViews.swift     compact, alerte, onglet Calendrier
+│   │   │   ├── MonthCalendarView.swift mini-calendrier du mois de l'accueil
+│   │   │   ├── EventDraft.swift        brouillon d'événement : valeurs par défaut, validation
+│   │   │   └── EventEditor.swift       fenêtre « Nouvel événement »
+│   │   └── Notifications/
+│   │       ├── SystemNotification.swift  notification et décodage du champ data
+│   │       ├── NotificationDatabase.swift  lecture SQLite de la base du centre de notifications
+│   │       ├── FileChangeWatcher.swift surveillance (kqueue) du dossier et des fichiers de la base
+│   │       ├── NotificationService.swift  @Observable : accès, nouvelles notifications
+│   │       └── NotificationPopupView.swift  pop-up au style de l'aperçu de piste
 │   └── System/
 │       ├── Permissions/
 │       │   └── AccessibilityPermission.swift
@@ -310,7 +318,8 @@ LetsWork/
 │   ├── IslandTests.swift
 │   ├── MediaTests.swift
 │   ├── HUDTests.swift
-│   └── CalendarTests.swift
+│   ├── CalendarTests.swift
+│   └── NotificationTests.swift
 ├── Vendor/
 │   ├── mediaremote-adapter/            sous-module git (v0.7.7)
 │   └── build/                          framework compilé (ignoré par git)
@@ -345,6 +354,7 @@ IslandModel → IslandView (SwiftUI) — animations
 - **Médias** : `MediaService.onChange` prévient `ActivityCoordinator`, qui active l'activité `.media`, déclenche l'aperçu de 3 s à chaque nouvelle piste et retire l'activité 5 s après une pause.
 - **HUD** : `MediaKeyTap` (event tap de session, en tête de file) reçoit les événements système `NX_KEYTYPE_*` et les touches 144/145. `HUDService` applique le changement (Core Audio ou DisplayServices), absorbe l'événement pour que macOS n'affiche pas son indicateur, puis `HUDService.onShow` prévient `ActivityCoordinator`, qui affiche l'état `.hud` pendant 1,5 s après la dernière pression. ⌥ seul laisse passer la touche (macOS ouvre le réglage) ; ⌥⇧ règle par pas de 1/64.
 - **Calendrier** : `EventKitProvider` lit les comptes macOS ; `CalendarService` fusionne et filtre les événements d'aujourd'hui à J+7, recalcule l'événement du compact et les alertes au prochain instant utile (début de la fenêtre d'une heure, alerte, début, fin), puis prévient `ActivityCoordinator` (`onUpcomingChange`, `onAlert`). Activité de fond : la lecture si elle est active, sinon la réunion. L'alerte reste 10 s, sauf clic. Rechargement sur `EKEventStoreChanged`, changement de jour et sortie de veille.
+- **Notifications** : `FileChangeWatcher` (kqueue, sur le dossier, `db` et `db-wal` ; FSEvents ne remonte rien pour ce dossier protégé) signale une écriture dans la base, avec une vérification de secours toutes les 10 s ; `NotificationService` lit les enregistrements plus récents que le dernier vu, les décode et prévient `ActivityCoordinator` (`onNotification`), qui affiche l'état `.notification` 5 s et met les suivantes en file.
 
 ### Conventions
 
@@ -383,6 +393,8 @@ Tout le code embarqué (dont `MediaRemoteAdapter.framework`) doit être signé a
 | En repli, rien ne s'affiche alors que Spotify joue déjà | Autorisation Automatisation pas encore accordée : l'état n'arrive qu'avec la prochaine notification | Cliquer une fois sur un contrôle de lecture pour accorder l'autorisation, ou compiler l'adaptateur |
 | Après un relancement, l'Island n'affiche plus la lecture | Une copie périmée de l'app a été ouverte (Spotlight, Finder, autre dossier de build) | `make run`, ou ⌘R dans Xcode ; vérifier le chemin avec `pgrep -lf LetsWork.app` |
 | `make run` : « LetsWork tourne encore (débogueur Xcode ?) » | L'instance lancée par Xcode intercepte l'arrêt et se met en pause | Arrêter la session dans Xcode (⌘.), puis relancer `make run` |
+| Les notifications n'apparaissent pas dans l'Island | Accès complet au disque absent (Réglages › Notifications l'indique), ou format de la base changé | Accorder l'accès ; sinon lire `log show --last 5m --predicate 'subsystem == "dev.projects.letswork" AND category == "notifications"'` (noms de tables et de clés uniquement) |
+| Les bannières de macOS s'affichent en plus de l'Island | Mode Concentration « LetsWork » inactif | Le créer sans aucune app autorisée et l'activer depuis le Centre de contrôle |
 | Plusieurs processus `mediaremote-adapter.pl` | Adaptateurs orphelins d'une instance tuée | Supprimés au prochain lancement de l'app (section 7.4) |
 | En repli, les boutons de lecture n'ont aucun effet | Autorisation Automatisation refusée | Réglages Système › Confidentialité et sécurité › Automatisation |
 | `cmake` échoue sur des fichiers manquants | Sous-modules de l'adaptateur absents | `git submodule update --init --recursive` |
