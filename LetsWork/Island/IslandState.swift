@@ -5,6 +5,8 @@ enum IslandState: Equatable {
     case compact
     /// Compact enrichi (titre de la piste) affiché brièvement après un changement de piste.
     case peek
+    /// Indicateur temporaire de volume ou de luminosité.
+    case hud
     case expanded
 }
 
@@ -19,11 +21,13 @@ struct IslandInputs: Equatable {
     var isPinned = false
     var hasActivity = false
     var isPeeking = false
+    var isShowingHUD = false
 }
 
 extension IslandState {
-    /// Survol ou épinglage priment sur l'activité de fond (FEATURES.md, F0).
+    /// Le HUD interrompt tout ; puis survol ou épinglage priment sur l'activité de fond (FEATURES.md, F0).
     static func resolve(_ inputs: IslandInputs) -> IslandState {
+        if inputs.isShowingHUD { return .hud }
         if inputs.isPinned || inputs.isHovering { return .expanded }
         guard inputs.hasActivity else { return .closed }
         return inputs.isPeeking ? .peek : .compact

@@ -6,10 +6,12 @@ import SwiftUI
 @MainActor
 final class SettingsWindowController {
     private let media: MediaService
+    private let hud: HUDService
     private var window: NSWindow?
 
-    init(media: MediaService) {
+    init(media: MediaService, hud: HUDService) {
         self.media = media
+        self.hud = hud
     }
 
     func show() {
@@ -20,7 +22,7 @@ final class SettingsWindowController {
     }
 
     private func makeWindow() -> NSWindow {
-        let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(media: media)))
+        let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(media: media, hud: hud)))
         window.title = String(localized: "Réglages LetsWork")
         window.styleMask = [.titled, .closable]
         window.isReleasedWhenClosed = false

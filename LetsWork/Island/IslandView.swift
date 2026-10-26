@@ -50,6 +50,10 @@ struct IslandView: View {
             }
         case .peek:
             MediaPeekView(media: media, notch: metrics.notch)
+        case .hud:
+            if let hud = model.hud {
+                HUDView(state: hud, notch: metrics.notch)
+            }
         case .expanded:
             if media.nowPlaying != nil {
                 MediaExpandedView(media: media, notchHeight: metrics.notch.size.height)

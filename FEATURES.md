@@ -189,8 +189,17 @@ Remplacer les indicateurs natifs de macOS (volume, luminosité de l'écran, et e
 
 ### Points à valider en début de développement (spike)
 
-- Sur les MacBook Pro Apple Silicon, vérifier sous quelle forme arrivent les touches de luminosité : événement `systemDefined` (`NX_KEYTYPE_BRIGHTNESS_*`) ou `keyDown` avec les keyCodes 144/145 selon le réglage « Utiliser F1, F2… comme touches de fonction standard ». Gérer les deux formes si nécessaire.
+- Sur les MacBook Pro Apple Silicon, vérifier sous quelle forme arrivent les touches de luminosité : événement `systemDefined` (`NX_KEYTYPE_BRIGHTNESS_*`) ou `keyDown` avec les keyCodes 144/145 selon le réglage « Utiliser F1, F2… comme touches de fonction standard ». **Constaté pendant M2** : le clavier intégré envoie des événements `systemDefined` ; un Logitech MX Keys S, via l'agent Logi Options+, réémet ses touches F1/F2 en **F14/F15** (codes 107/113), que macOS associe par défaut à la luminosité. M2 gère ces trois formes (événement système, 144/145, F14/F15).
 - Vérifier sur la version de macOS cible que l'absorption de l'événement suffit à masquer le HUD natif. L'ancienne technique consistant à tuer le processus `OSDUIHelper` ne fonctionne plus depuis macOS 26 (le processus n'existe plus) et ne doit pas être utilisée.
+- Vérifié pendant M2 (macOS 27.0.1) : les fonctions `DisplayServicesGetBrightness`, `DisplayServicesSetBrightness` et `DisplayServicesCanChangeBrightness` sont présentes et lisent bien la luminosité de l'écran intégré.
+
+### Limites connues (M2)
+
+- **Rétroéclairage du clavier** : non géré ; les MacBook Pro Apple Silicon n'ont pas de touches dédiées.
+- **F14/F15** : toujours traitées comme luminosité −/+ (raccourcis par défaut de macOS). Si ces touches ont été réaffectées à autre chose, LetsWork les intercepte quand même.
+- **Changements externes** : seuls les changements de volume (Centre de contrôle, AirPods, autre app) affichent le HUD, et uniquement quand l'interception est active. Les changements de luminosité externes (capteur de lumière ambiante, Centre de contrôle) ne l'affichent pas, pour ne pas le déclencher en continu.
+- **Nom de la sortie audio** : pas encore affiché sous la jauge.
+- **Priorité** : le HUD remplace aussi l'Island étendue pendant 1,5 s, conformément à l'arbitrage F0.
 
 ### Autorisations
 
@@ -288,7 +297,7 @@ Toutes les sources implémentent une même interface `CalendarProvider` ; un agr
 |---|---|---|---|
 | **M0 — Socle** | Fenêtre Island, ancrage sur l'encoche, états fermé/compact/étendu, survol, icône de barre de menus, réglages vides, lancement à l'ouverture de session. | L'Island s'ouvre au survol, au-dessus d'une app plein écran. | Fait |
 | **M1 — Médias** | Intégration de mediaremote-adapter, modèle « Now Playing », vues compact/aperçu/étendu, contrôles, repli AppleScript. | Critères d'acceptation F1. | Validé avec Spotify (adaptateur et repli) ; vidéo dans un navigateur et Apple Music à vérifier |
-| **M2 — HUD** | Spike touches/HUD natif, event tap, Core Audio, DisplayServices, vue HUD, assistant d'autorisation Accessibilité. | Critères d'acceptation F2. | À faire |
+| **M2 — HUD** | Spike touches/HUD natif, event tap, Core Audio, DisplayServices, vue HUD, assistant d'autorisation Accessibilité. | Critères d'acceptation F2. | Validé : clavier intégré et Logitech MX Keys S (volume, muet, luminosité) |
 | **M3 — Calendrier** | EventKit, vues, alertes, détection de visio ; puis fournisseurs Google et Microsoft Graph. | Critères d'acceptation F3. | À faire |
 | **M4 — Finition** | Assistant de premier lancement, localisation, accessibilité, signature Developer ID, notarisation, mises à jour (Sparkle). | DMG notarisé installable sur un autre Mac. | À faire |
 

@@ -11,6 +11,7 @@ final class IslandModel {
     private(set) var state: IslandState = .closed
     private(set) var metrics: IslandMetrics
     private(set) var activity: IslandActivity?
+    private(set) var hud: HUDState?
 
     @ObservationIgnored private var inputs = IslandInputs()
     @ObservationIgnored private var pendingTransition: Task<Void, Never>?
@@ -46,6 +47,13 @@ final class IslandModel {
         guard activity != self.activity else { return }
         self.activity = activity
         inputs.hasActivity = activity != nil
+        resolveNow()
+    }
+
+    /// `nil` masque le HUD et rend la main à l'état précédent.
+    func setHUD(_ hud: HUDState?) {
+        self.hud = hud
+        inputs.isShowingHUD = hud != nil
         resolveNow()
     }
 

@@ -8,6 +8,8 @@ struct IslandMetrics: Equatable {
     /// Ligne ajoutée sous l'encoche en aperçu, et largeur minimale pour y lire un titre.
     static let peekExtraHeight: CGFloat = 30
     static let peekMinimumWidth: CGFloat = 380
+    /// Ailes du HUD : l'icône à gauche, la jauge et le pourcentage à droite.
+    static let hudWingWidth: CGFloat = 110
     static let expandedSize = CGSize(width: 600, height: 230)
     /// Marge autour de la forme pour déclencher le survol sans être pixel-perfect.
     static let hoverMargin: CGFloat = 6
@@ -26,6 +28,8 @@ struct IslandMetrics: Equatable {
                 width: max(Self.peekMinimumWidth, notch.size.width + 2 * Self.compactWingWidth),
                 height: notch.size.height + Self.peekExtraHeight
             )
+        case .hud:
+            CGSize(width: notch.size.width + 2 * Self.hudWingWidth, height: notch.size.height)
         case .expanded:
             CGSize(
                 width: max(Self.expandedSize.width, notch.size.width + 2 * Self.compactWingWidth),
@@ -38,7 +42,7 @@ struct IslandMetrics: Equatable {
     func topCornerRadius(for state: IslandState) -> CGFloat {
         switch state {
         case .closed: 0
-        case .compact, .peek: 6
+        case .compact, .peek, .hud: 6
         case .expanded: 12
         }
     }
@@ -46,7 +50,7 @@ struct IslandMetrics: Equatable {
     func bottomCornerRadius(for state: IslandState) -> CGFloat {
         switch state {
         case .closed: 10
-        case .compact: 12
+        case .compact, .hud: 12
         case .peek: 18
         case .expanded: 26
         }

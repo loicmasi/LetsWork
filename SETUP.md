@@ -207,13 +207,26 @@ L'adaptateur est un processus enfant de l'app. Si l'app est tuée sans se termin
 | Calendriers (accès complet) | F3 | Invite système au premier accès, puis › Calendriers |
 | Automatisation (Musique, Spotify) | F1, canal de repli | Invite système au premier Apple Event, puis › Automatisation |
 
-Seul le repli AppleScript (M1) demande une autorisation : Automatisation, au premier clic sur un contrôle de lecture.
+- **Accessibilité** (M2) : demandée depuis Réglages › Volume et luminosité › « Autoriser… ». Sans elle, LetsWork n'intercepte rien et les indicateurs de macOS restent affichés. L'app détecte l'autorisation sans redémarrage.
+- **Automatisation** (M1) : seulement pour le repli AppleScript, au premier clic sur un contrôle de lecture.
 
-**Signature stable — à faire avant M2** : macOS associe les autorisations à la signature de l'app. Le projet est actuellement signé en local (ad hoc, `CODE_SIGN_IDENTITY: "-"`) car aucun certificat n'est installé sur ce Mac. Avec cette signature, l'autorisation Accessibilité serait perdue à chaque build. Avant M2 :
+**Autorisations et builds de développement** : macOS rattache une autorisation à l'*exigence désignée* de la signature. Pour une signature ad hoc, c'est par défaut l'empreinte du binaire : chaque build perdrait l'autorisation Accessibilité (l'app resterait cochée dans la liste sans être reconnue).
 
-1. Xcode › Réglages › Comptes : ajouter un identifiant Apple (l'équipe personnelle gratuite suffit) et créer un certificat **Apple Development**.
-2. Dans `project.yml` : renseigner `DEVELOPMENT_TEAM` et supprimer la ligne `CODE_SIGN_IDENTITY: "-"`.
-3. `make project`.
+En **Debug**, `project.yml` impose donc une exigence fondée sur l'identifiant seul (`OTHER_CODE_SIGN_FLAGS`) :
+
+```text
+designated => identifier "dev.projects.letswork"
+```
+
+- L'autorisation, accordée une fois, reste valable d'un build Debug à l'autre.
+- Contrepartie : pendant le développement, toute app locale signée avec cet identifiant hériterait des autorisations de LetsWork.
+- `ENABLE_DEBUG_DYLIB` est désactivé en Debug : sinon ces options de signature s'appliqueraient aussi aux bibliothèques des aperçus SwiftUI et rendraient le bundle invalide.
+- Le **Release** garde l'exigence standard (certificat Developer ID, voir section 10).
+- Vérifier : `codesign -d -r- build/DerivedData/Build/Products/Debug/LetsWork.app`.
+
+Après un changement de signature (première application de cette exigence, passage à un certificat), réinitialiser l'autorisation puis la redemander depuis les réglages de LetsWork.
+
+Alternative plus stricte : un certificat **Apple Development** (Xcode › Réglages › Comptes, équipe personnelle gratuite) ; renseigner alors `DEVELOPMENT_TEAM`, supprimer `CODE_SIGN_IDENTITY: "-"` et l'exigence Debug, puis `make project`.
 
 Réinitialiser une autorisation pour retester le parcours de premier lancement :
 
@@ -270,12 +283,23 @@ LetsWork/
 │   │   │   ├── MediaService.swift      @Observable : choix de la source, pochette, commandes
 │   │   │   ├── MediaCompactView.swift  compact, aperçu, pochette, égaliseur
 │   │   │   └── MediaExpandedView.swift lecteur étendu, progression
-│   │   ├── HUD/                        (à venir, M2)
+│   │   ├── HUD/
+│   │   │   ├── HUDModel.swift          touches, pas de réglage, volume, état affiché
+│   │   │   ├── MediaKeyTap.swift       event tap qui intercepte et absorbe les touches
+│   │   │   ├── VolumeController.swift  volume et sourdine via Core Audio, écoute des changements
+│   │   │   ├── BrightnessController.swift  luminosité de l'écran intégré principal
+│   │   │   ├── HUDService.swift        @Observable : autorisation, interception, retour sonore
+│   │   │   └── HUDView.swift           icône et jauge dans les ailes de l'Island
 │   │   └── Calendar/                   (à venir, M3)
-│   └── System/                         (à venir) Permissions/, Private/
+│   └── System/
+│       ├── Permissions/
+│       │   └── AccessibilityPermission.swift
+│       └── Private/
+│           └── DisplayServices.swift   framework privé de luminosité, chargé par dlopen
 ├── LetsWorkTests/
 │   ├── IslandTests.swift
-│   └── MediaTests.swift
+│   ├── MediaTests.swift
+│   └── HUDTests.swift
 ├── Vendor/
 │   ├── mediaremote-adapter/            sous-module git (v0.7.7)
 │   └── build/                          framework compilé (ignoré par git)
@@ -307,7 +331,8 @@ ActivityCoordinator (@MainActor) — applique la priorité définie dans FEATURE
 IslandModel → IslandView (SwiftUI) — animations
 ```
 
-En M1, seule l'activité média existe : `MediaService.onChange` prévient `ActivityCoordinator`, qui active l'activité `.media`, déclenche l'aperçu de 3 s à chaque nouvelle piste et retire l'activité 5 s après une pause.
+- **Médias** : `MediaService.onChange` prévient `ActivityCoordinator`, qui active l'activité `.media`, déclenche l'aperçu de 3 s à chaque nouvelle piste et retire l'activité 5 s après une pause.
+- **HUD** : `MediaKeyTap` (event tap de session, en tête de file) reçoit les événements système `NX_KEYTYPE_*` et les touches 144/145. `HUDService` applique le changement (Core Audio ou DisplayServices), absorbe l'événement pour que macOS n'affiche pas son indicateur, puis `HUDService.onShow` prévient `ActivityCoordinator`, qui affiche l'état `.hud` pendant 1,5 s après la dernière pression. ⌥ seul laisse passer la touche (macOS ouvre le réglage) ; ⌥⇧ règle par pas de 1/64.
 
 ### Conventions
 
@@ -354,4 +379,7 @@ Tout le code embarqué (dont `MediaRemoteAdapter.framework`) doit être signé a
 | L'Island disparaît en plein écran ou en changeant de Space | `collectionBehavior` incomplet | `.canJoinAllSpaces` + `.fullScreenAuxiliary` |
 | Les clics sur la barre de menus près de l'encoche ne passent plus | La fenêtre capte la souris hors de l'Island | Vérifier `ignoresMouseEvents` dans `IslandWindowController.handleMouse` |
 | L'autorisation Accessibilité est perdue à chaque build | Signature ad hoc | Signer avec un certificat Apple Development (section 8) |
+| Les indicateurs de macOS s'affichent toujours | Autorisation Accessibilité absente, ou accordée à une signature différente (journal `tccd` : « Failed to match existing code requirement ») | Réglages › Volume et luminosité doit indiquer « Interception : Active ». Sinon : `tccutil reset Accessibility dev.projects.letswork`, puis « Autoriser… » (section 8) |
+| Une touche d'un clavier externe affiche encore l'indicateur de macOS | La touche arrive sous une forme non reconnue (ex. un utilitaire de clavier la réémet) | Activer le diagnostic : `defaults write dev.projects.letswork hudDiagnostics -bool true`, appuyer sur la touche, puis lire `log show --last 2m --predicate 'subsystem == "dev.projects.letswork"'` (code, modificateurs, processus source, absorbée ou transmise). Le désactiver ensuite avec `defaults delete dev.projects.letswork hudDiagnostics`. Seules les touches spéciales et de fonction sont journalisées, jamais la frappe |
+| Les touches de luminosité ne passent pas par LetsWork | L'écran principal est externe, ou DisplayServices est indisponible | Comportement voulu : macOS garde la main (FEATURES.md, F2) |
 | L'app apparaît dans le Dock | `LSUIElement` absent | Vérifier `info.properties` dans `project.yml`, puis `make project` |

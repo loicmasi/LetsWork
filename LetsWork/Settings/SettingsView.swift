@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SettingsView: View {
     let media: MediaService
+    @Bindable var hud: HUDService
 
     @AppStorage(AppSettings.displayTargetKey) private var displayTarget: DisplayTarget = .notchScreen
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
@@ -44,6 +45,30 @@ struct SettingsView: View {
                     Text(detail)
                         .font(.callout)
                         .foregroundStyle(.secondary)
+                }
+            }
+            Section("Volume et luminosité") {
+                Toggle("Remplacer les indicateurs de macOS", isOn: $hud.isEnabled)
+                LabeledContent("Autorisation Accessibilité") {
+                    if hud.isAccessibilityGranted {
+                        Label("Accordée", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    } else {
+                        Button("Autoriser…", action: hud.requestAccessibility)
+                    }
+                }
+                LabeledContent("Interception des touches") {
+                    Text(hud.isIntercepting ? "Active" : "Inactive")
+                        .foregroundStyle(hud.isIntercepting ? .primary : .secondary)
+                }
+                if !hud.isAccessibilityGranted {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Sans cette autorisation, LetsWork ne peut pas intercepter les touches : les indicateurs de macOS restent affichés.")
+                        Text("LetsWork est déjà coché dans Réglages Système ? Une version recompilée n'est plus reconnue : retirez LetsWork de la liste avec « − », puis cliquez sur « Autoriser… ».")
+                        Button("Ouvrir Réglages Système › Accessibilité") { AccessibilityPermission.openSystemSettings() }
+                    }
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
                 }
             }
         }

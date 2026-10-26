@@ -19,15 +19,32 @@ enum MediaTransition: Equatable {
 final class ActivityCoordinator {
     static let trackChangePeekDuration: Duration = .seconds(3)
     static let playbackEndGrace: Duration = .seconds(5)
+    /// Durée d'affichage du HUD après la dernière pression.
+    static let hudDuration: Duration = .milliseconds(1500)
 
     private let island: IslandModel
     private var peekTask: Task<Void, Never>?
     private var graceTask: Task<Void, Never>?
+    private var hudTask: Task<Void, Never>?
 
-    init(island: IslandModel, media: MediaService) {
+    init(island: IslandModel, media: MediaService, hud: HUDService) {
         self.island = island
         media.onChange = { [weak self] previous, current in
             self?.mediaDidChange(from: previous, to: current)
+        }
+        hud.onShow = { [weak self] state in
+            self?.showHUD(state)
+        }
+    }
+
+    /// Chaque pression relance le délai avant que l'Island revienne à son état précédent.
+    func showHUD(_ state: HUDState) {
+        island.setHUD(state)
+        hudTask?.cancel()
+        hudTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.hudDuration)
+            guard !Task.isCancelled else { return }
+            self?.island.setHUD(nil)
         }
     }
 

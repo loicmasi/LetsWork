@@ -12,8 +12,9 @@ settings:
     SWIFT_VERSION: "6.0"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
-    # Signature locale (ad hoc) tant qu'aucun certificat Apple Development n'est installé.
-    # Avant M2 (autorisation Accessibilité) : renseigner DEVELOPMENT_TEAM et retirer CODE_SIGN_IDENTITY.
+    # Signature locale (ad hoc) tant qu'aucun certificat n'est installé ; en Debug, l'exigence désignée
+    # de la cible LetsWork garde les autorisations entre les builds (SETUP.md, section 8).
+    # Pour distribuer : renseigner DEVELOPMENT_TEAM et retirer CODE_SIGN_IDENTITY.
     CODE_SIGN_STYLE: Automatic
     CODE_SIGN_IDENTITY: "-"
     DEVELOPMENT_TEAM: ""
@@ -47,6 +48,15 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: dev.projects.letswork
         # La phase d'embarquement de l'adaptateur lit Vendor/ sans déclarer ses fichiers.
         ENABLE_USER_SCRIPT_SANDBOXING: NO
+      configs:
+        Debug:
+          # Signature ad hoc : sans exigence explicite, macOS identifie l'app par l'empreinte du binaire
+          # et chaque build perd l'autorisation Accessibilité. On l'identifie par son identifiant seul.
+          # Contrepartie : en développement, toute app locale portant cet identifiant hérite des autorisations.
+          OTHER_CODE_SIGN_FLAGS: '--requirements "=designated => identifier \"$(PRODUCT_BUNDLE_IDENTIFIER)\""'
+          # Ces options de signature s'appliqueraient aussi aux bibliothèques de débogage des aperçus SwiftUI
+          # et rendraient le bundle invalide : on s'en passe (le projet n'utilise pas les aperçus).
+          ENABLE_DEBUG_DYLIB: NO
     postBuildScripts:
       # Facultatif : sans `make adapter`, l'app se rabat sur AppleScript (voir SETUP.md, section 7).
       - name: Embarquer mediaremote-adapter
