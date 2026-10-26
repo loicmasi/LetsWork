@@ -3,12 +3,12 @@ import CoreGraphics
 /// Dimensions de l'Island pour chaque état, à partir de l'encoche de l'écran courant.
 struct IslandMetrics: Equatable {
     /// Taille de la fenêtre transparente dans laquelle l'Island s'anime.
-    static let canvasSize = CGSize(width: 640, height: 240)
+    static let canvasSize = CGSize(width: 680, height: 270)
     static let compactWingWidth: CGFloat = 72
     /// Ligne ajoutée sous l'encoche en aperçu, et largeur minimale pour y lire un titre.
     static let peekExtraHeight: CGFloat = 30
     static let peekMinimumWidth: CGFloat = 380
-    static let expandedSize = CGSize(width: 520, height: 190)
+    static let expandedSize = CGSize(width: 600, height: 230)
     /// Marge autour de la forme pour déclencher le survol sans être pixel-perfect.
     static let hoverMargin: CGFloat = 6
 

@@ -286,7 +286,7 @@ LetsWork/
 
 ### Fonctionnement de l'Island (M0)
 
-- La fenêtre (`IslandPanel`) est une zone transparente fixe de 640 × 240 pt, centrée en haut de l'écran ; la forme s'anime à l'intérieur.
+- La fenêtre (`IslandPanel`) est une zone transparente fixe de 680 × 270 pt, centrée en haut de l'écran ; la forme s'anime à l'intérieur.
 - La fenêtre **ignore la souris par défaut** : les clics passent vers la barre de menus et les fenêtres situées dessous.
 - Un moniteur global de mouvements de souris détecte l'entrée dans la zone de l'Island (`IslandMetrics.hitZone`). La fenêtre se met alors à capter la souris, et une zone de suivi (`NSTrackingArea`, `.activeAlways`) prend le relais tant que la souris est dessus.
 - `IslandModel` applique les délais : 150 ms avant d'ouvrir, 250 ms avant de refermer. Un clic épingle l'Island ; un clic ailleurs (moniteur global) retire l'épinglage.

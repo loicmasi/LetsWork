@@ -7,19 +7,19 @@ struct MediaExpandedView: View {
 
     var body: some View {
         if let nowPlaying = media.nowPlaying {
-            VStack(spacing: 10) {
-                HStack(spacing: 14) {
+            VStack(spacing: 14) {
+                HStack(spacing: 18) {
                     Button(action: media.activateSourceApp) {
-                        ArtworkView(media: media, size: 64, cornerRadius: 12)
+                        ArtworkView(media: media, size: 96, cornerRadius: 12)
                     }
                     .buttonStyle(.plain)
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: 5) {
                         Text(nowPlaying.title)
-                            .font(.headline)
+                            .font(.title2.weight(.semibold))
                             .foregroundStyle(.white)
                         if let subtitle = Self.subtitle(of: nowPlaying) {
                             Text(subtitle)
-                                .font(.subheadline)
+                                .font(.title3)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -47,9 +47,10 @@ struct MediaExpandedView: View {
                     ControlButton(symbol: "forward.fill", label: "Piste suivante", action: media.nextTrack)
                 }
             }
-            .padding(.horizontal, 24)
-            .padding(.top, notchHeight + 6)
-            .padding(.bottom, 12)
+            // Avec une encoche de 32 pt, remplit exactement IslandMetrics.expandedSize (230 pt).
+            .padding(.horizontal, 28)
+            .padding(.top, notchHeight + 8)
+            .padding(.bottom, 16)
         }
     }
 
