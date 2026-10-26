@@ -297,7 +297,8 @@ LetsWork/
 │   │       ├── CalendarModel.swift     événement, liens de visio, délais, fusion, événement du compact et alertes
 │   │       ├── EventKitProvider.swift  protocole CalendarProvider et source EventKit
 │   │       ├── CalendarService.swift   @Observable : accès, filtres, fenêtre de 7 jours, réveils programmés
-│   │       └── CalendarViews.swift     compact, alerte, onglet Calendrier
+│   │       ├── CalendarViews.swift     compact, alerte, onglet Calendrier
+│   │       └── MonthCalendarView.swift mini-calendrier du mois de l'accueil
 │   └── System/
 │       ├── Permissions/
 │       │   └── AccessibilityPermission.swift

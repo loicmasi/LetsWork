@@ -83,58 +83,70 @@ struct HomeView: View {
 
     var body: some View {
         TimelineView(.everyMinute) { context in
-            VStack(alignment: .leading, spacing: 6) {
-                Text(context.date, format: .dateTime.weekday(.wide).day().month(.wide))
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                Text(context.date, format: .dateTime.hour().minute())
-                    .font(.system(size: 34, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
-                if let nowPlaying = media.nowPlaying {
-                    Button(action: openMedia) {
-                        HStack(spacing: 6) {
-                            Image(systemName: nowPlaying.isPlaying ? "waveform" : "pause.fill")
-                                .foregroundStyle(media.accent)
-                            Text(Self.mediaSummary(of: nowPlaying))
-                                .lineLimit(1)
-                                .truncationMode(.tail)
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                        }
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .help("Ouvrir l'onglet Multimédia")
+            HStack(alignment: .top, spacing: 16) {
+                summary(now: context.date)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button(action: openCalendar) {
+                    MonthCalendarView(date: context.date)
                 }
-                if let event = CalendarSchedule.next(in: calendar.events, at: context.date) {
-                    Button(action: openCalendar) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "calendar")
-                                .foregroundStyle(event.color.color)
-                            Text(Self.eventSummary(of: event, now: context.date))
-                                .lineLimit(1)
-                                .truncationMode(.tail)
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                        }
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .help("Ouvrir l'onglet Calendrier")
-                }
-                if media.nowPlaying == nil, CalendarSchedule.next(in: calendar.events, at: context.date) == nil {
-                    Text("Aucune activité pour le moment")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
+                .buttonStyle(.plain)
+                .help("Ouvrir l'onglet Calendrier")
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 24)
             .padding(.top, notchHeight + 8)
+        }
+    }
+
+    /// Colonne de gauche : date, heure, lecture en cours et prochain événement.
+    private func summary(now: Date) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(now, format: .dateTime.weekday(.wide).day().month(.wide))
+                .font(.headline)
+                .foregroundStyle(.white)
+            Text(now, format: .dateTime.hour().minute())
+                .font(.system(size: 34, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white)
+            if let nowPlaying = media.nowPlaying {
+                Button(action: openMedia) {
+                    HStack(spacing: 6) {
+                        Image(systemName: nowPlaying.isPlaying ? "waveform" : "pause.fill")
+                            .foregroundStyle(media.accent)
+                        Text(Self.mediaSummary(of: nowPlaying))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Ouvrir l'onglet Multimédia")
+            }
+            if let event = CalendarSchedule.next(in: calendar.events, at: now) {
+                Button(action: openCalendar) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "calendar")
+                            .foregroundStyle(event.color.color)
+                        Text(Self.eventSummary(of: event, now: now))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Ouvrir l'onglet Calendrier")
+            }
+            if media.nowPlaying == nil, CalendarSchedule.next(in: calendar.events, at: now) == nil {
+                Text("Aucune activité pour le moment")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 

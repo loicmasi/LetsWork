@@ -189,3 +189,31 @@ struct CalendarIslandTests {
         #expect(HomeView.eventSummary(of: event("Point", startsIn: 12), now: now) == "Prochain : Point · dans 12 min")
     }
 }
+
+struct MonthGridTests {
+    private var frenchCalendar: Calendar {
+        var calendar = paris
+        calendar.locale = french
+        calendar.firstWeekday = 2
+        return calendar
+    }
+
+    private func days(_ grid: MonthGrid) -> [[Int?]] {
+        grid.weeks.map { week in week.map { $0.map { frenchCalendar.component(.day, from: $0) } } }
+    }
+
+    @Test func octoberStartsOnThursdayAndSpansFiveWeeks() {
+        let grid = MonthGrid(containing: now, calendar: frenchCalendar)
+        #expect(grid.weekdaySymbols == ["L", "M", "M", "J", "V", "S", "D"])
+        #expect(days(grid).first == [nil, nil, nil, 1, 2, 3, 4])
+        #expect(days(grid).last == [26, 27, 28, 29, 30, 31, nil])
+        #expect(grid.weeks.count == 5)
+    }
+
+    @Test func monthStartingOnSundayNeedsSixWeeks() throws {
+        let march = try #require(frenchCalendar.date(from: DateComponents(year: 2026, month: 3, day: 15)))
+        let grid = MonthGrid(containing: march, calendar: frenchCalendar)
+        #expect(grid.weeks.count == 6)
+        #expect(days(grid).first == [nil, nil, nil, nil, nil, nil, 1])
+    }
+}
