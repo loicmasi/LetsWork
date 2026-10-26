@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsView: View {
     let media: MediaService
     @Bindable var hud: HUDService
+    @Bindable var calendar: CalendarService
 
     @AppStorage(AppSettings.displayTargetKey) private var displayTarget: DisplayTarget = .notchScreen
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
@@ -71,10 +72,61 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                 }
             }
+            Section("Calendrier") {
+                LabeledContent("Accès aux calendriers") {
+                    switch calendar.access {
+                    case .granted:
+                        Label("Accordé", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    case .notDetermined:
+                        Button("Autoriser…") {
+                            Task { await calendar.requestAccess() }
+                        }
+                    case .denied:
+                        Button("Réglages Système", action: calendar.openSystemSettings)
+                    }
+                }
+                if calendar.access == .granted {
+                    Toggle("Masquer les événements sur la journée entière", isOn: $calendar.hidesAllDayEvents)
+                    Picker("Alerte avant une réunion", selection: $calendar.alertLeadMinutes) {
+                        ForEach(CalendarService.alertLeadChoices, id: \.self) { minutes in
+                            Text("\(minutes) min").tag(minutes)
+                        }
+                    }
+                }
+            }
+            if calendar.access == .granted, !calendar.calendars.isEmpty {
+                Section("Calendriers affichés") {
+                    ForEach(calendar.calendars) { info in
+                        Toggle(isOn: visibilityBinding(for: info.id)) {
+                            HStack(spacing: 8) {
+                                Circle()
+                                    .fill(info.color.color)
+                                    .frame(width: 9, height: 9)
+                                Text(info.title)
+                                Text(info.sourceTitle)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
         }
         .formStyle(.grouped)
         .frame(width: 460)
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func visibilityBinding(for calendarID: String) -> Binding<Bool> {
+        Binding {
+            !calendar.hiddenCalendarIDs.contains(calendarID)
+        } set: { isVisible in
+            if isVisible {
+                calendar.hiddenCalendarIDs.remove(calendarID)
+            } else {
+                calendar.hiddenCalendarIDs.insert(calendarID)
+            }
+        }
     }
 
     private func updateLaunchAtLogin(_ enabled: Bool) {

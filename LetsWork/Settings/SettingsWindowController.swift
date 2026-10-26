@@ -7,11 +7,13 @@ import SwiftUI
 final class SettingsWindowController {
     private let media: MediaService
     private let hud: HUDService
+    private let calendar: CalendarService
     private var window: NSWindow?
 
-    init(media: MediaService, hud: HUDService) {
+    init(media: MediaService, hud: HUDService, calendar: CalendarService) {
         self.media = media
         self.hud = hud
+        self.calendar = calendar
     }
 
     func show() {
@@ -22,7 +24,7 @@ final class SettingsWindowController {
     }
 
     private func makeWindow() -> NSWindow {
-        let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(media: media, hud: hud)))
+        let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(media: media, hud: hud, calendar: calendar)))
         window.title = String(localized: "Réglages LetsWork")
         window.styleMask = [.titled, .closable]
         window.isReleasedWhenClosed = false

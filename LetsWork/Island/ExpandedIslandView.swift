@@ -4,6 +4,7 @@ import SwiftUI
 struct ExpandedIslandView: View {
     let model: IslandModel
     let media: MediaService
+    let calendar: CalendarService
     let notchHeight: CGFloat
 
     var body: some View {
@@ -11,11 +12,17 @@ struct ExpandedIslandView: View {
             Group {
                 switch model.selectedTab {
                 case .home:
-                    HomeView(media: media, notchHeight: notchHeight) {
-                        model.selectTab(.media)
-                    }
+                    HomeView(
+                        media: media,
+                        calendar: calendar,
+                        notchHeight: notchHeight,
+                        openMedia: { model.selectTab(.media) },
+                        openCalendar: { model.selectTab(.calendar) }
+                    )
                 case .media:
                     MediaExpandedView(media: media, notchHeight: notchHeight)
+                case .calendar:
+                    CalendarTabView(calendar: calendar, notchHeight: notchHeight)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -66,11 +73,13 @@ private struct IslandTabBar: View {
     }
 }
 
-/// Page d'accueil : date, heure, et la lecture en cours qui mène à l'onglet Multimédia.
+/// Page d'accueil : date, heure, puis la lecture en cours et le prochain événement, qui mènent à leur onglet.
 struct HomeView: View {
     let media: MediaService
+    let calendar: CalendarService
     let notchHeight: CGFloat
     let openMedia: () -> Void
+    let openCalendar: () -> Void
 
     var body: some View {
         TimelineView(.everyMinute) { context in
@@ -98,7 +107,26 @@ struct HomeView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Ouvrir l'onglet Multimédia")
-                } else {
+                }
+                if let event = CalendarSchedule.next(in: calendar.events, at: context.date) {
+                    Button(action: openCalendar) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "calendar")
+                                .foregroundStyle(event.color.color)
+                            Text(Self.eventSummary(of: event, now: context.date))
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Ouvrir l'onglet Calendrier")
+                }
+                if media.nowPlaying == nil, CalendarSchedule.next(in: calendar.events, at: context.date) == nil {
                     Text("Aucune activité pour le moment")
                         .font(.callout)
                         .foregroundStyle(.secondary)
@@ -108,6 +136,14 @@ struct HomeView: View {
             .padding(.horizontal, 24)
             .padding(.top, notchHeight + 8)
         }
+    }
+
+    /// « En cours : Titre », ou « Prochain : Titre · dans 12 min ».
+    static func eventSummary(of event: CalendarEvent, now: Date) -> String {
+        if event.isOngoing(at: now) {
+            return String(localized: "En cours : \(event.title)")
+        }
+        return String(localized: "Prochain : \(event.title) · \(EventTiming.shortLabel(for: event, now: now))")
     }
 
     /// « En lecture : Titre — Artiste », ou « En pause : … ».

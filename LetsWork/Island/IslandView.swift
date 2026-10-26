@@ -3,13 +3,14 @@ import SwiftUI
 struct IslandView: View {
     let model: IslandModel
     let media: MediaService
+    let calendar: CalendarService
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let state = model.state
         let metrics = model.metrics
-        let size = metrics.size(for: state)
+        let size = metrics.size(for: state, activity: model.activity)
         let top = metrics.topCornerRadius(for: state)
         let shape = NotchShape(topCornerRadius: top, bottomCornerRadius: metrics.bottomCornerRadius(for: state))
 
@@ -23,7 +24,14 @@ struct IslandView: View {
         .frame(width: size.width + 2 * top, height: size.height)
         .clipShape(shape)
         .contentShape(shape)
-        .onTapGesture { model.togglePinned() }
+        .onTapGesture {
+            // Un clic sur l'alerte la referme ; ailleurs, il épingle l'Island.
+            if state == .alert {
+                model.setAlert(nil)
+            } else {
+                model.togglePinned()
+            }
+        }
         // Sur un écran sans encoche, l'Island fermée n'a rien à prolonger : elle reste invisible.
         .opacity(state == .closed && !metrics.notch.hasNotch ? 0 : 1)
         .shadow(color: .black.opacity(state == .expanded ? 0.4 : 0), radius: 12, y: 6)
@@ -34,6 +42,7 @@ struct IslandView: View {
             value: state
         )
         .animation(.easeInOut(duration: 0.2), value: metrics)
+        .animation(.spring(response: 0.38, dampingFraction: 0.78), value: model.activity)
     }
 
     @ViewBuilder
@@ -45,17 +54,28 @@ struct IslandView: View {
             switch model.activity {
             case .media:
                 MediaCompactView(media: media, notch: metrics.notch)
+            case .calendar:
+                if let event = calendar.upcoming {
+                    CalendarCompactView(event: event, notch: metrics.notch)
+                }
             case nil:
                 Color.clear
             }
         case .peek:
             MediaPeekView(media: media, notch: metrics.notch)
+        case .alert:
+            if let event = model.alert {
+                CalendarAlertView(event: event, notch: metrics.notch) {
+                    calendar.join(event)
+                    model.setAlert(nil)
+                }
+            }
         case .hud:
             if let hud = model.hud {
                 HUDView(state: hud, notch: metrics.notch)
             }
         case .expanded:
-            ExpandedIslandView(model: model, media: media, notchHeight: metrics.notch.size.height)
+            ExpandedIslandView(model: model, media: media, calendar: calendar, notchHeight: metrics.notch.size.height)
         }
     }
 }

@@ -99,7 +99,7 @@ struct IslandModelTests {
     }
 
     @Test func tabsStartOnHomeInBarOrder() {
-        #expect(IslandTab.allCases == [.home, .media])
+        #expect(IslandTab.allCases == [.home, .media, .calendar])
         #expect(model.selectedTab == .home)
     }
 

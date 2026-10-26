@@ -204,9 +204,10 @@ L'adaptateur est un processus enfant de l'app. Si l'app est tuée sans se termin
 | Autorisation | Fonctionnalité | Où l'accorder |
 |---|---|---|
 | Accessibilité | F2 (event tap) | Réglages Système › Confidentialité et sécurité › Accessibilité |
-| Calendriers (accès complet) | F3 | Invite système au premier accès, puis › Calendriers |
+| Calendriers (accès complet) | F3 | Onglet Calendrier ou Réglages › Calendrier › « Autoriser… », puis › Calendriers |
 | Automatisation (Musique, Spotify) | F1, canal de repli | Invite système au premier Apple Event, puis › Automatisation |
 
+- **Calendriers** (M3) : demandés depuis l'onglet Calendrier ou Réglages › Calendrier, jamais au lancement.
 - **Accessibilité** (M2) : demandée depuis Réglages › Volume et luminosité › « Autoriser… ». Sans elle, LetsWork n'intercepte rien et les indicateurs de macOS restent affichés. L'app détecte l'autorisation sans redémarrage.
 - **Automatisation** (M1) : seulement pour le repli AppleScript, au premier clic sur un contrôle de lecture.
 
@@ -292,7 +293,11 @@ LetsWork/
 │   │   │   ├── BrightnessController.swift  luminosité de l'écran intégré principal
 │   │   │   ├── HUDService.swift        @Observable : autorisation, interception, retour sonore
 │   │   │   └── HUDView.swift           icône et jauge dans les ailes de l'Island
-│   │   └── Calendar/                   (à venir, M3)
+│   │   └── Calendar/
+│   │       ├── CalendarModel.swift     événement, liens de visio, délais, fusion, événement du compact et alertes
+│   │       ├── EventKitProvider.swift  protocole CalendarProvider et source EventKit
+│   │       ├── CalendarService.swift   @Observable : accès, filtres, fenêtre de 7 jours, réveils programmés
+│   │       └── CalendarViews.swift     compact, alerte, onglet Calendrier
 │   └── System/
 │       ├── Permissions/
 │       │   └── AccessibilityPermission.swift
@@ -301,7 +306,8 @@ LetsWork/
 ├── LetsWorkTests/
 │   ├── IslandTests.swift
 │   ├── MediaTests.swift
-│   └── HUDTests.swift
+│   ├── HUDTests.swift
+│   └── CalendarTests.swift
 ├── Vendor/
 │   ├── mediaremote-adapter/            sous-module git (v0.7.7)
 │   └── build/                          framework compilé (ignoré par git)
@@ -335,6 +341,7 @@ IslandModel → IslandView (SwiftUI) — animations
 
 - **Médias** : `MediaService.onChange` prévient `ActivityCoordinator`, qui active l'activité `.media`, déclenche l'aperçu de 3 s à chaque nouvelle piste et retire l'activité 5 s après une pause.
 - **HUD** : `MediaKeyTap` (event tap de session, en tête de file) reçoit les événements système `NX_KEYTYPE_*` et les touches 144/145. `HUDService` applique le changement (Core Audio ou DisplayServices), absorbe l'événement pour que macOS n'affiche pas son indicateur, puis `HUDService.onShow` prévient `ActivityCoordinator`, qui affiche l'état `.hud` pendant 1,5 s après la dernière pression. ⌥ seul laisse passer la touche (macOS ouvre le réglage) ; ⌥⇧ règle par pas de 1/64.
+- **Calendrier** : `EventKitProvider` lit les comptes macOS ; `CalendarService` fusionne et filtre les événements d'aujourd'hui à J+7, recalcule l'événement du compact et les alertes au prochain instant utile (début de la fenêtre d'une heure, alerte, début, fin), puis prévient `ActivityCoordinator` (`onUpcomingChange`, `onAlert`). Activité de fond : la lecture si elle est active, sinon la réunion. L'alerte reste 10 s, sauf clic. Rechargement sur `EKEventStoreChanged`, changement de jour et sortie de veille.
 
 ### Conventions
 
@@ -383,5 +390,6 @@ Tout le code embarqué (dont `MediaRemoteAdapter.framework`) doit être signé a
 | L'autorisation Accessibilité est perdue à chaque build | Signature ad hoc | Signer avec un certificat Apple Development (section 8) |
 | Les indicateurs de macOS s'affichent toujours | Autorisation Accessibilité absente, ou accordée à une signature différente (journal `tccd` : « Failed to match existing code requirement ») | Réglages › Volume et luminosité doit indiquer « Interception : Active ». Sinon : `tccutil reset Accessibility dev.projects.letswork`, puis « Autoriser… » (section 8) |
 | Une touche d'un clavier externe affiche encore l'indicateur de macOS | La touche arrive sous une forme non reconnue (ex. un utilitaire de clavier la réémet) | Activer le diagnostic : `defaults write dev.projects.letswork hudDiagnostics -bool true`, appuyer sur la touche, puis lire `log show --last 2m --predicate 'subsystem == "dev.projects.letswork"'` (code, modificateurs, processus source, absorbée ou transmise). Le désactiver ensuite avec `defaults delete dev.projects.letswork hudDiagnostics`. Seules les touches spéciales et de fonction sont journalisées, jamais la frappe |
+| L'onglet Calendrier est vide ou un compte manque | Accès non accordé, calendrier masqué, ou compte absent de macOS | Réglages › Calendrier : accès « Accordé » et calendrier coché ; ajouter le compte dans Réglages Système › Comptes internet (Google, Exchange) |
 | Les touches de luminosité ne passent pas par LetsWork | L'écran principal est externe, ou DisplayServices est indisponible | Comportement voulu : macOS garde la main (FEATURES.md, F2) |
 | L'app apparaît dans le Dock | `LSUIElement` absent | Vérifier `info.properties` dans `project.yml`, puis `make project` |

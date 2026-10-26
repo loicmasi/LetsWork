@@ -270,6 +270,16 @@ Toutes les sources implémentent une même interface `CalendarProvider` ; un agr
 - [ ] Un événement en double dans deux sources n'apparaît qu'une fois.
 - [ ] Refuser l'accès aux calendriers désactive proprement la fonctionnalité (message + lien vers les réglages), sans plantage.
 
+### Décisions et limites (M3)
+
+- **Sources** : EventKit seul pour l'instant, derrière l'interface `CalendarProvider`. Les fournisseurs Google Calendar et Microsoft Graph demandent d'enregistrer une application cliente OAuth chez Google Cloud et Microsoft Entra ID ; ils restent à faire (voir Questions ouvertes).
+- **Compact** : l'événement apparaît une heure avant son début et reste affiché pendant son déroulement ; la lecture d'un média reste prioritaire. Les événements sur la journée entière n'apparaissent pas en compact.
+- **Alerte** : une seule fois par événement et par lancement de l'app ; délai réglable (1, 5, 10 ou 15 min, 5 par défaut).
+- **Accueil** : ligne « En cours : Titre » ou « Prochain : Titre · dans 12 min », qui ouvre l'onglet Calendrier.
+- **Accès** : demandé depuis l'onglet Calendrier ou les réglages, jamais au lancement.
+- **« Rejoindre »** : ouvre le lien https ; l'app de visio le prend en charge si elle est installée.
+- **Calendriers affichés** et **journées entières masquées** : réglables dans Réglages › Calendrier.
+
 ### Évolutions (hors v1)
 
 - Rappels (`EKReminder`), création rapide d'événement.
@@ -299,7 +309,7 @@ Toutes les sources implémentent une même interface `CalendarProvider` ; un agr
 | **M0 — Socle** | Fenêtre Island, ancrage sur l'encoche, états fermé/compact/étendu, survol, icône de barre de menus, réglages vides, lancement à l'ouverture de session. | L'Island s'ouvre au survol, au-dessus d'une app plein écran. | Fait |
 | **M1 — Médias** | Intégration de mediaremote-adapter, modèle « Now Playing », vues compact/aperçu/étendu, contrôles, repli AppleScript. | Critères d'acceptation F1. | Validé avec Spotify (adaptateur et repli) ; vidéo dans un navigateur et Apple Music à vérifier |
 | **M2 — HUD** | Spike touches/HUD natif, event tap, Core Audio, DisplayServices, vue HUD, assistant d'autorisation Accessibilité. | Critères d'acceptation F2. | Validé : clavier intégré et Logitech MX Keys S (volume, muet, luminosité) |
-| **M3 — Calendrier** | EventKit, vues, alertes, détection de visio ; puis fournisseurs Google et Microsoft Graph. | Critères d'acceptation F3. | À faire |
+| **M3 — Calendrier** | EventKit, vues, alertes, détection de visio ; puis fournisseurs Google et Microsoft Graph. | Critères d'acceptation F3. | EventKit codé ; à valider avec l'accès aux calendriers ; Google et Microsoft Graph à faire |
 | **M4 — Finition** | Assistant de premier lancement, localisation, accessibilité, signature Developer ID, notarisation, mises à jour (Sparkle). | DMG notarisé installable sur un autre Mac. | À faire |
 
 ---

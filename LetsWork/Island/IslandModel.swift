@@ -12,6 +12,7 @@ final class IslandModel {
     private(set) var metrics: IslandMetrics
     private(set) var activity: IslandActivity?
     private(set) var hud: HUDState?
+    private(set) var alert: CalendarEvent?
     /// Page affichée à l'état étendu ; conservée d'une ouverture à l'autre.
     private(set) var selectedTab: IslandTab = .home
 
@@ -54,6 +55,13 @@ final class IslandModel {
 
     func selectTab(_ tab: IslandTab) {
         selectedTab = tab
+    }
+
+    /// `nil` masque l'alerte de réunion.
+    func setAlert(_ event: CalendarEvent?) {
+        alert = event
+        inputs.isShowingAlert = event != nil
+        resolveNow()
     }
 
     /// `nil` masque le HUD et rend la main à l'état précédent.

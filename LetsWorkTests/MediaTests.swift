@@ -159,7 +159,7 @@ struct ActivityCoordinatorTests {
     let media = MediaService()
 
     @Test func newTrackShowsMediaAndPeeks() {
-        let coordinator = ActivityCoordinator(island: island, media: media, hud: HUDService())
+        let coordinator = ActivityCoordinator(island: island, media: media, hud: HUDService(), calendar: CalendarService(providers: []))
         let song = NowPlaying(title: "A", isPlaying: true)
         coordinator.mediaDidChange(from: nil, to: song)
         #expect(island.activity == .media)
@@ -167,7 +167,7 @@ struct ActivityCoordinatorTests {
     }
 
     @Test func pauseKeepsCompactDuringGracePeriod() {
-        let coordinator = ActivityCoordinator(island: island, media: media, hud: HUDService())
+        let coordinator = ActivityCoordinator(island: island, media: media, hud: HUDService(), calendar: CalendarService(providers: []))
         var song = NowPlaying(title: "A", isPlaying: true)
         coordinator.mediaDidChange(from: nil, to: song)
         song.isPlaying = false

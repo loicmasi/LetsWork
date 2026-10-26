@@ -4,6 +4,7 @@ import SwiftUI
 enum IslandTab: CaseIterable, Identifiable {
     case home
     case media
+    case calendar
 
     var id: Self { self }
 
@@ -11,6 +12,7 @@ enum IslandTab: CaseIterable, Identifiable {
         switch self {
         case .home: "Accueil"
         case .media: "Multimédia"
+        case .calendar: "Calendrier"
         }
     }
 
@@ -18,6 +20,7 @@ enum IslandTab: CaseIterable, Identifiable {
         switch self {
         case .home: "house.fill"
         case .media: "music.note"
+        case .calendar: "calendar"
         }
     }
 }

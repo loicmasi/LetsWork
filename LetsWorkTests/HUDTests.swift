@@ -128,7 +128,7 @@ struct HUDIslandTests {
     }
 
     @Test func coordinatorHidesTheHUDAfterADelay() async throws {
-        let coordinator = ActivityCoordinator(island: island, media: MediaService(), hud: HUDService())
+        let coordinator = ActivityCoordinator(island: island, media: MediaService(), hud: HUDService(), calendar: CalendarService(providers: []))
         coordinator.showHUD(HUDState(kind: .brightness, level: 0.6))
         #expect(island.state == .hud)
         try await Task.sleep(for: ActivityCoordinator.hudDuration + .milliseconds(300))

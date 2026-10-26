@@ -11,10 +11,10 @@ final class IslandWindowController {
     private var eventMonitors: [Any] = []
     private var notificationObservers: [NSObjectProtocol] = []
 
-    init(media: MediaService) {
+    init(media: MediaService, calendar: CalendarService) {
         let fallback = NotchGeometry(size: CGSize(width: NotchGeometry.simulatedWidth, height: NotchGeometry.minimumSimulatedHeight), hasNotch: false)
         model = IslandModel(metrics: IslandMetrics(notch: fallback))
-        let container = IslandContainerView(rootView: IslandView(model: model, media: media))
+        let container = IslandContainerView(rootView: IslandView(model: model, media: media, calendar: calendar))
         container.onMouseEvent = { [weak self] in
             self?.handleMouse(at: NSEvent.mouseLocation)
         }
@@ -61,7 +61,7 @@ final class IslandWindowController {
 
     private func handleMouse(at location: NSPoint) {
         guard let screen else { return }
-        let isInside = model.metrics.hitZone(for: model.state, in: screen.frame).contains(location)
+        let isInside = model.metrics.hitZone(for: model.state, activity: model.activity, in: screen.frame).contains(location)
         if panel.ignoresMouseEvents == isInside {
             panel.ignoresMouseEvents = !isInside
         }
