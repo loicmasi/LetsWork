@@ -26,6 +26,11 @@ final class MediaService {
     private(set) var accentColor: NSColor?
     private(set) var sourceApp: SourceApp?
 
+    /// Nuances de la pochette pour la vague de la barre de progression.
+    var wavePalette: WavePalette {
+        WavePalette(accent: accentColor ?? .white)
+    }
+
     /// Appelé à chaque changement d'état de lecture, avec l'état précédent.
     @ObservationIgnored var onChange: ((_ previous: NowPlaying?, _ current: NowPlaying?) -> Void)?
 

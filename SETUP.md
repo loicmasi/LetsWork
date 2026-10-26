@@ -345,6 +345,7 @@ Tout le code embarqué (dont `MediaRemoteAdapter.framework`) doit être signé a
 | Réglages › Médias indique « Repli AppleScript » | Adaptateur non compilé ou en échec | `make adapter`, recompiler ; sinon tester l'adaptateur (section 7.1) |
 | En repli, rien ne s'affiche alors que Spotify joue déjà | Autorisation Automatisation pas encore accordée : l'état n'arrive qu'avec la prochaine notification | Cliquer une fois sur un contrôle de lecture pour accorder l'autorisation, ou compiler l'adaptateur |
 | Après un relancement, l'Island n'affiche plus la lecture | Une copie périmée de l'app a été ouverte (Spotlight, Finder, autre dossier de build) | `make run`, ou ⌘R dans Xcode ; vérifier le chemin avec `pgrep -lf LetsWork.app` |
+| `make run` : « LetsWork tourne encore (débogueur Xcode ?) » | L'instance lancée par Xcode intercepte l'arrêt et se met en pause | Arrêter la session dans Xcode (⌘.), puis relancer `make run` |
 | Plusieurs processus `mediaremote-adapter.pl` | Adaptateurs orphelins d'une instance tuée | Supprimés au prochain lancement de l'app (section 7.4) |
 | En repli, les boutons de lecture n'ont aucun effet | Autorisation Automatisation refusée | Réglages Système › Confidentialité et sécurité › Automatisation |
 | `cmake` échoue sur des fichiers manquants | Sous-modules de l'adaptateur absents | `git submodule update --init --recursive` |

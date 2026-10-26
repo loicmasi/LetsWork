@@ -22,7 +22,12 @@ test: project
 	xcodebuild -project LetsWork.xcodeproj -scheme LetsWork -derivedDataPath $(DERIVED_DATA) test
 
 # Compile, quitte l'instance en cours (quelle que soit sa copie) et lance ce build.
+# Une instance lancée par le débogueur d'Xcode intercepte l'arrêt : on abandonne au bout de 5 s.
 run: build
 	-pkill -x LetsWork
-	while pgrep -x LetsWork > /dev/null; do sleep 0.1; done
+	@for i in $$(seq 50); do pgrep -x LetsWork > /dev/null || break; sleep 0.1; done
+	@if pgrep -x LetsWork > /dev/null; then \
+		echo "LetsWork tourne encore (débogueur Xcode ?) : l'arrêter dans Xcode, puis relancer make run." >&2; \
+		exit 1; \
+	fi
 	open "$(APP)"

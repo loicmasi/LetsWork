@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import Testing
 @testable import LetsWork
 
@@ -173,5 +173,37 @@ struct ActivityCoordinatorTests {
         song.isPlaying = false
         coordinator.mediaDidChange(from: NowPlaying(title: "A", isPlaying: true), to: song)
         #expect(island.activity == .media)
+    }
+}
+
+struct WaveTests {
+    @Test func domesStayWithinAmplitudeWithGapsBetweenThem() {
+        let layer = WaveLayer.middle
+        let heights = stride(from: 0, to: layer.wavelength * 3, by: 1).map { layer.height(at: $0, time: 12.3) }
+        #expect(heights.allSatisfy { $0 >= 0 && $0 <= layer.amplitude })
+        #expect(heights.contains { $0 > layer.amplitude * 0.95 })
+        #expect(heights.filter { $0 == 0 }.count >= Int(layer.wavelength))
+    }
+
+    @Test(arguments: [WaveLayer.back, .middle, .front])
+    func domesTravelInTheirDirection(layer: WaveLayer) {
+        let elapsed: TimeInterval = 0.5
+        let distance = layer.speed * CGFloat(elapsed) * layer.direction
+        for x in stride(from: CGFloat(0), to: 60, by: 3) {
+            let later = layer.height(at: x + distance, time: 100 + elapsed)
+            #expect(abs(later - layer.height(at: x, time: 100)) < 0.0001)
+        }
+    }
+
+    @Test func layersMoveInBothDirections() {
+        let directions = Set([WaveLayer.back, .middle, .front].map(\.direction))
+        #expect(directions == [-1, 1])
+    }
+
+    @Test func paletteHasThreeDistinctContrasts() {
+        let palette = WavePalette(accent: NSColor(deviceHue: 0.9, saturation: 0.5, brightness: 0.8, alpha: 1))
+        #expect(palette.low.brightnessComponent < palette.medium.brightnessComponent)
+        #expect(palette.medium.brightnessComponent < palette.high.brightnessComponent)
+        #expect(abs(palette.medium.hueComponent - 0.9) < 0.01)
     }
 }

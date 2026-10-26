@@ -103,16 +103,8 @@ struct PlaybackProgressView: View {
     private func bar(fraction: Double, duration: TimeInterval) -> some View {
         GeometryReader { proxy in
             let width = max(proxy.size.width, 1)
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(.white.opacity(0.2))
-                Capsule()
-                    .fill(media.accent)
-                    .frame(width: width * fraction)
-            }
-            .frame(height: 5)
-            .frame(maxHeight: .infinity)
-            .contentShape(Rectangle())
+            WaveProgressBar(fraction: fraction, palette: media.wavePalette, isPlaying: nowPlaying.isPlaying)
+                .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
@@ -124,7 +116,10 @@ struct PlaybackProgressView: View {
                     }
             )
         }
-        .frame(height: 14)
+        .frame(height: 22)
+        .accessibilityElement()
+        .accessibilityLabel("Progression de la lecture")
+        .accessibilityValue(PlaybackTime.format(fraction * duration))
     }
 }
 
