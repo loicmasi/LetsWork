@@ -43,8 +43,9 @@ struct WaveLayer: Equatable {
 }
 
 /// Barre de progression : la partie écoulée porte trois couches de dômes animées,
-/// la partie restante reste un trait discret.
-struct WaveProgressBar: View {
+/// la partie restante reste un trait discret. Le défilement est confié à Core Animation : il tourne dans
+/// le serveur d'affichage, alors qu'un dessin SwiftUI à 30 images/s recalculait toute l'Island en continu.
+struct WaveProgressBar: NSViewRepresentable {
     /// Part écoulée, entre 0 et 1.
     let fraction: Double
     let palette: WavePalette
@@ -52,47 +53,152 @@ struct WaveProgressBar: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// En pause, les dômes s'aplatissent et se figent.
+    static let pausedAmplitude: CGFloat = 0.35
+
+    func makeNSView(context: Context) -> WaveBarView {
+        WaveBarView()
+    }
+
+    func updateNSView(_ view: WaveBarView, context: Context) {
+        view.update(
+            fraction: CGFloat(min(max(fraction, 0), 1)),
+            palette: palette,
+            amplitudeScale: isPlaying ? 1 : Self.pausedAmplitude,
+            isMoving: isPlaying && !reduceMotion
+        )
+    }
+}
+
+final class WaveBarView: NSView {
     private static let trackHeight: CGFloat = 4
     /// Amortit les dômes aux extrémités de la partie écoulée pour éviter une coupure nette.
     private static let edgeFade: CGFloat = 10
-    /// En pause, les dômes s'aplatissent et se figent.
-    private static let pausedAmplitude: CGFloat = 0.35
+    private static let waves: [WaveLayer] = [.back, .middle, .front]
 
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !isPlaying || reduceMotion)) { context in
-            Canvas { canvas, size in
-                draw(in: &canvas, size: size, time: context.date.timeIntervalSinceReferenceDate)
+    private let trackLayer = CALayer()
+    /// Contient les dômes ; sa largeur suit la partie écoulée et un masque dégradé en adoucit les bords.
+    private let wavesContainer = CALayer()
+    private let fadeMask = CAGradientLayer()
+    private let waveLayers = WaveBarView.waves.map { _ in CAShapeLayer() }
+    private let elapsedLayer = CALayer()
+
+    private var fraction: CGFloat = 0
+    private var amplitudeScale: CGFloat = 1
+    private var isMoving = false
+    private var builtSize: CGSize = .zero
+    private var builtAmplitude: CGFloat = 0
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        guard let layer else { return }
+        trackLayer.backgroundColor = NSColor.white.withAlphaComponent(0.18).cgColor
+        fadeMask.startPoint = CGPoint(x: 0, y: 0.5)
+        fadeMask.endPoint = CGPoint(x: 1, y: 0.5)
+        wavesContainer.mask = fadeMask
+        waveLayers.forEach(wavesContainer.addSublayer)
+        [trackLayer, wavesContainer, elapsedLayer].forEach(layer.addSublayer)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) n'est pas pris en charge")
+    }
+
+    /// Les clics vont à SwiftUI, qui gère le glisser pour se déplacer dans la piste.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        nil
+    }
+
+    func update(fraction: CGFloat, palette: WavePalette, amplitudeScale: CGFloat, isMoving: Bool) {
+        self.fraction = fraction
+        self.amplitudeScale = amplitudeScale
+        let colors = [palette.low, palette.medium, palette.high]
+        for (layer, color) in zip(waveLayers, colors) {
+            layer.fillColor = color.withAlphaComponent(0.9).cgColor
+        }
+        elapsedLayer.backgroundColor = palette.high.cgColor
+        if isMoving != self.isMoving {
+            self.isMoving = isMoving
+            isMoving ? resumeWaves() : pauseWaves()
+        }
+        needsLayout = true
+    }
+
+    override func layout() {
+        super.layout()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        let size = bounds.size
+        let trackY = size.height / 2
+        let elapsedWidth = size.width * fraction
+        trackLayer.frame = CGRect(x: 0, y: trackY - Self.trackHeight / 2, width: size.width, height: Self.trackHeight)
+        trackLayer.cornerRadius = Self.trackHeight / 2
+        elapsedLayer.frame = CGRect(x: 0, y: trackY - Self.trackHeight / 2, width: elapsedWidth, height: Self.trackHeight)
+        elapsedLayer.cornerRadius = Self.trackHeight / 2
+
+        wavesContainer.frame = CGRect(x: 0, y: 0, width: elapsedWidth, height: size.height)
+        fadeMask.frame = wavesContainer.bounds
+        let fade = elapsedWidth > 0 ? min(0.5, Self.edgeFade / elapsedWidth) : 0
+        fadeMask.colors = [NSColor.clear, .black, .black, .clear].map(\.cgColor)
+        fadeMask.locations = [0, fade, 1 - fade, 1].map { NSNumber(value: Double($0)) }
+
+        if size != builtSize || amplitudeScale != builtAmplitude {
+            builtSize = size
+            builtAmplitude = amplitudeScale
+            buildWaves(size: size)
+        }
+        CATransaction.commit()
+    }
+
+    /// Chaque couche dessine ses dômes sur toute la largeur plus une période, puis défile d'une période
+    /// en boucle : le motif étant périodique, la boucle est invisible.
+    private func buildWaves(size: CGSize) {
+        let baseline = size.height / 2
+        let maxHeight = (baseline - 1) * amplitudeScale
+        for (wave, layer) in zip(Self.waves, waveLayers) {
+            let path = CGMutablePath()
+            let start = -wave.wavelength
+            let end = size.width + wave.wavelength
+            path.move(to: CGPoint(x: start, y: baseline))
+            var x = start
+            while x <= end {
+                path.addLine(to: CGPoint(x: x, y: baseline + wave.height(at: x, time: 0) * maxHeight))
+                x += 1
             }
+            path.addLine(to: CGPoint(x: end, y: baseline))
+            path.closeSubpath()
+            layer.path = path
+
+            layer.removeAnimation(forKey: "scroll")
+            let scroll = CABasicAnimation(keyPath: "transform.translation.x")
+            scroll.fromValue = 0
+            scroll.toValue = wave.wavelength * wave.direction
+            scroll.duration = CFTimeInterval(wave.wavelength / wave.speed)
+            scroll.repeatCount = .infinity
+            scroll.isRemovedOnCompletion = false
+            layer.add(scroll, forKey: "scroll")
+        }
+        if !isMoving {
+            pauseWaves()
         }
     }
 
-    private func draw(in canvas: inout GraphicsContext, size: CGSize, time: TimeInterval) {
-        let trackY = size.height / 2
-        let elapsedWidth = size.width * CGFloat(min(max(fraction, 0), 1))
-        let track = CGRect(x: 0, y: trackY - Self.trackHeight / 2, width: size.width, height: Self.trackHeight)
+    /// Fige le défilement là où il en est.
+    private func pauseWaves() {
+        guard wavesContainer.speed != 0 else { return }
+        let pausedTime = wavesContainer.convertTime(CACurrentMediaTime(), from: nil)
+        wavesContainer.speed = 0
+        wavesContainer.timeOffset = pausedTime
+    }
 
-        canvas.fill(Path(roundedRect: track, cornerRadius: Self.trackHeight / 2), with: .color(.white.opacity(0.18)))
-        guard elapsedWidth > 0 else { return }
-
-        let maxHeight = trackY - 1
-        let scale = isPlaying ? 1 : Self.pausedAmplitude
-        let layers: [(WaveLayer, NSColor)] = [(.back, palette.low), (.middle, palette.medium), (.front, palette.high)]
-        for (layer, color) in layers {
-            var path = Path()
-            path.move(to: CGPoint(x: 0, y: trackY))
-            var x: CGFloat = 0
-            while x <= elapsedWidth {
-                let fade = min(1, x / Self.edgeFade, (elapsedWidth - x) / Self.edgeFade)
-                let height = layer.height(at: x, time: time) * maxHeight * scale * max(0, fade)
-                path.addLine(to: CGPoint(x: x, y: trackY - height))
-                x += 1
-            }
-            path.addLine(to: CGPoint(x: elapsedWidth, y: trackY))
-            path.closeSubpath()
-            canvas.fill(path, with: .color(Color(nsColor: color).opacity(0.9)))
-        }
-
-        let elapsedTrack = CGRect(x: 0, y: track.minY, width: elapsedWidth, height: Self.trackHeight)
-        canvas.fill(Path(roundedRect: elapsedTrack, cornerRadius: Self.trackHeight / 2), with: .color(Color(nsColor: palette.high)))
+    private func resumeWaves() {
+        guard wavesContainer.speed == 0 else { return }
+        let pausedTime = wavesContainer.timeOffset
+        wavesContainer.speed = 1
+        wavesContainer.timeOffset = 0
+        wavesContainer.beginTime = 0
+        wavesContainer.beginTime = wavesContainer.convertTime(CACurrentMediaTime(), from: nil) - pausedTime
     }
 }
