@@ -15,6 +15,7 @@ final class CalendarService {
         static let hiddenCalendars = "calendarHiddenIDs"
         static let hidesAllDay = "calendarHidesAllDay"
         static let alertLead = "calendarAlertLeadMinutes"
+        static let lastUsedCalendar = "calendarLastUsedForNewEvents"
     }
 
     private(set) var access: CalendarAccess
@@ -47,6 +48,8 @@ final class CalendarService {
 
     @ObservationIgnored var onUpcomingChange: ((CalendarEvent?) -> Void)?
     @ObservationIgnored var onAlert: ((CalendarEvent) -> Void)?
+    /// Ouvre la fenêtre « Nouvel événement » pour le jour donné (branché par l'AppDelegate).
+    @ObservationIgnored var onCreateEventRequest: ((Date) -> Void)?
 
     @ObservationIgnored private let providers: [any CalendarProvider]
     @ObservationIgnored private var allEvents: [CalendarEvent] = []
@@ -97,6 +100,29 @@ final class CalendarService {
     func requestAccess() async {
         guard let provider = providers.first else { return }
         access = await provider.requestAccess()
+        reload()
+    }
+
+    /// Calendriers qui acceptent de nouveaux événements, y compris ceux masqués dans l'Island.
+    var writableCalendars: [CalendarInfo] {
+        calendars.filter(\.allowsModifications)
+    }
+
+    /// Dernier calendrier utilisé, sinon celui proposé par macOS, sinon le premier modifiable.
+    var defaultCalendarIDForNewEvents: String? {
+        let writableIDs = Set(writableCalendars.map(\.id))
+        let candidates = [UserDefaults.standard.string(forKey: Key.lastUsedCalendar), providers.first?.defaultCalendarID]
+        return candidates.compactMap { $0 }.first(where: writableIDs.contains) ?? writableCalendars.first?.id
+    }
+
+    func requestNewEvent(on day: Date) {
+        onCreateEventRequest?(day)
+    }
+
+    func createEvent(_ draft: EventDraft) async throws {
+        guard let provider = providers.first else { throw CalendarError.calendarUnavailable }
+        try await provider.createEvent(draft)
+        UserDefaults.standard.set(draft.calendarID, forKey: Key.lastUsedCalendar)
         reload()
     }
 

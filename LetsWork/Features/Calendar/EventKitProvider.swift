@@ -10,7 +10,21 @@ protocol CalendarProvider: AnyObject {
     var onChange: (() -> Void)? { get set }
     func requestAccess() async -> CalendarAccess
     func calendars() -> [CalendarInfo]
+    /// Calendrier proposé par le système pour les nouveaux événements.
+    var defaultCalendarID: String? { get }
     func events(in interval: DateInterval) async throws -> [CalendarEvent]
+    func createEvent(_ draft: EventDraft) async throws
+}
+
+enum CalendarError: LocalizedError {
+    case calendarUnavailable
+
+    var errorDescription: String? {
+        switch self {
+        case .calendarUnavailable:
+            String(localized: "Ce calendrier n'accepte pas de nouveaux événements.")
+        }
+    }
 }
 
 /// Comptes ajoutés à macOS (iCloud, Google, Exchange, CalDAV), via EventKit.
@@ -52,8 +66,41 @@ final class EventKitProvider: CalendarProvider {
     func calendars() -> [CalendarInfo] {
         guard access == .granted else { return [] }
         return store.calendars(for: .event)
-            .map { CalendarInfo(id: $0.calendarIdentifier, title: $0.title, sourceTitle: $0.source.title, color: CalendarColor(cgColor: $0.cgColor)) }
+            .map {
+                CalendarInfo(
+                    id: $0.calendarIdentifier,
+                    title: $0.title,
+                    sourceTitle: $0.source.title,
+                    color: CalendarColor(cgColor: $0.cgColor),
+                    allowsModifications: $0.allowsContentModifications
+                )
+            }
             .sorted { ($0.sourceTitle, $0.title) < ($1.sourceTitle, $1.title) }
+    }
+
+    var defaultCalendarID: String? {
+        guard access == .granted else { return nil }
+        return store.defaultCalendarForNewEvents?.calendarIdentifier
+    }
+
+    /// Enregistre l'événement dans le calendrier choisi ; macOS le synchronise avec le compte (iCloud, Google, Exchange).
+    func createEvent(_ draft: EventDraft) async throws {
+        guard
+            let calendarID = draft.calendarID,
+            let calendar = store.calendar(withIdentifier: calendarID),
+            calendar.allowsContentModifications
+        else { throw CalendarError.calendarUnavailable }
+        let dates = draft.normalizedDates()
+        let event = EKEvent(eventStore: store)
+        event.calendar = calendar
+        event.title = draft.trimmedTitle
+        event.isAllDay = draft.isAllDay
+        event.startDate = dates.start
+        event.endDate = dates.end
+        event.location = draft.location.isEmpty ? nil : draft.location
+        event.notes = draft.notes.isEmpty ? nil : draft.notes
+        event.url = draft.url
+        try store.save(event, span: .thisEvent, commit: true)
     }
 
     func events(in interval: DateInterval) async throws -> [CalendarEvent] {

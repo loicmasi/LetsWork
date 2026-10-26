@@ -105,7 +105,7 @@ make open
 - un clic sur l'Island la garde ouverte ; un clic ailleurs la referme ;
 - pendant une lecture, l'Island passe en compact (pochette à gauche, égaliseur à droite) ; à chaque nouvelle piste, le titre s'affiche dessous pendant 3 s ; après une pause, elle se referme au bout de 5 s ;
 - **Réglages › Médias** indique la source utilisée : « Now Playing de macOS » (adaptateur) ou « Repli AppleScript » ;
-- une icône en forme de capsule apparaît dans la barre de menus, avec **Réglages…** et **Quitter** ;
+- une icône en forme de capsule apparaît dans la barre de menus, avec **Nouvel événement…** (⌘N), **Réglages…** et **Quitter** ;
 - aucune icône dans le Dock.
 
 ---
@@ -298,7 +298,9 @@ LetsWork/
 │   │       ├── EventKitProvider.swift  protocole CalendarProvider et source EventKit
 │   │       ├── CalendarService.swift   @Observable : accès, filtres, fenêtre de 7 jours, réveils programmés
 │   │       ├── CalendarViews.swift     compact, alerte, onglet Calendrier
-│   │       └── MonthCalendarView.swift mini-calendrier du mois de l'accueil
+│   │       ├── MonthCalendarView.swift mini-calendrier du mois de l'accueil
+│   │       ├── EventDraft.swift        brouillon d'événement : valeurs par défaut, validation
+│   │       └── EventEditor.swift       fenêtre « Nouvel événement »
 │   └── System/
 │       ├── Permissions/
 │       │   └── AccessibilityPermission.swift

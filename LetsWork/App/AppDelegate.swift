@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var islandController: IslandWindowController?
     private var coordinator: ActivityCoordinator?
     private lazy var settingsController = SettingsWindowController(media: media, hud: hud, calendar: calendar)
+    private lazy var eventEditor = EventEditorWindowController(calendar: calendar)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // L'app sert d'hôte aux tests unitaires : ni Island ni adaptateur, qui survivrait à l'arrêt des tests.
@@ -18,6 +19,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         islandController = controller
         media.start()
         hud.start()
+        calendar.onCreateEventRequest = { [weak self] day in
+            self?.eventEditor.show(day: day)
+        }
         calendar.start()
     }
 
@@ -30,5 +34,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func showSettings() {
         settingsController.show()
+    }
+
+    func showNewEvent() {
+        eventEditor.show(day: .now)
     }
 }

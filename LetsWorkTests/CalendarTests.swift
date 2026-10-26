@@ -217,3 +217,56 @@ struct MonthGridTests {
         #expect(days(grid).first == [nil, nil, nil, nil, nil, nil, 1])
     }
 }
+
+struct EventDraftTests {
+    private func at(_ hour: Int, _ minute: Int, second: Int = 0, day: Int = 26) -> Date {
+        paris.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour, minute: minute, second: second))!
+    }
+
+    @Test func startsAtTheNextHalfHourToday() {
+        #expect(EventDraft(day: now, now: at(14, 10), calendarID: "c", calendar: paris).start == at(14, 30))
+        #expect(EventDraft(day: now, now: at(14, 30), calendarID: "c", calendar: paris).start == at(15, 0))
+        let draft = EventDraft(day: now, now: at(14, 45, second: 20), calendarID: "c", calendar: paris)
+        #expect(draft.start == at(15, 0))
+        #expect(draft.end == at(16, 0))
+    }
+
+    @Test func startsAtNineAnotherDay() {
+        let tomorrow = at(12, 0, day: 27)
+        #expect(EventDraft(day: tomorrow, now: at(14, 10), calendarID: "c", calendar: paris).start == at(9, 0, day: 27))
+    }
+
+    @Test func movingTheStartKeepsTheDuration() {
+        var draft = EventDraft(day: now, now: at(14, 10), calendarID: "c", calendar: paris)
+        draft.end = at(16, 0)
+        draft.moveStart(to: at(17, 0))
+        #expect(draft.end == at(18, 30))
+    }
+
+    @Test func explainsWhatIsMissing() {
+        var draft = EventDraft(day: now, now: at(14, 10), calendarID: nil, calendar: paris)
+        #expect(draft.validationMessage == "Ajoutez un titre.")
+        draft.title = "  Point produit  "
+        #expect(draft.validationMessage == "Choisissez un calendrier.")
+        draft.calendarID = "travail"
+        draft.end = draft.start
+        #expect(draft.validationMessage == "La fin doit être après le début.")
+        draft.end = draft.start.addingTimeInterval(1800)
+        draft.urlText = "réunion teams"
+        #expect(draft.validationMessage == "Le lien doit commencer par https://.")
+        draft.urlText = "https://meet.google.com/abc-defg-hij"
+        #expect(draft.validationMessage == nil)
+        #expect(draft.trimmedTitle == "Point produit")
+        #expect(draft.url?.host == "meet.google.com")
+    }
+
+    @Test func allDayEventsCoverWholeDays() {
+        var draft = EventDraft(day: now, now: at(14, 10), calendarID: "c", calendar: paris)
+        draft.isAllDay = true
+        draft.end = at(10, 0, day: 28)
+        let dates = draft.normalizedDates(calendar: paris)
+        #expect(dates.start == at(0, 0))
+        #expect(dates.end == at(0, 0, day: 28))
+        #expect(draft.validationMessage == "Ajoutez un titre.")
+    }
+}

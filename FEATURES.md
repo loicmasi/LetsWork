@@ -228,6 +228,7 @@ Afficher l'agenda de l'utilisateur dans l'Island en **agrégeant plusieurs compt
 - En étendu, je vois les événements de la journée, toutes sources confondues, avec la couleur de chaque calendrier.
 - Quelques minutes avant une réunion en ligne, l'Island me prévient et propose un bouton « Rejoindre » (Teams, Meet, Zoom, Webex).
 - Je choisis quels calendriers sont affichés.
+- J'ajoute un événement dans le calendrier de mon choix, regroupé par compte (iCloud, Google, Exchange…).
 
 ### Affichage
 
@@ -270,6 +271,15 @@ Toutes les sources implémentent une même interface `CalendarProvider` ; un agr
 - [ ] Un événement en double dans deux sources n'apparaît qu'une fois.
 - [ ] Refuser l'accès aux calendriers désactive proprement la fonctionnalité (message + lien vers les réglages), sans plantage.
 
+### Création d'événements
+
+- **Ouverture** : bouton **+** de l'onglet Calendrier (sur le jour affiché), ou menu de la barre des menus › « Nouvel événement… » (⌘N).
+- **Fenêtre dédiée** « Nouvel événement », sous l'Island : le panneau de l'Island ne prend pas le clavier et se referme quand la souris s'éloigne.
+- **Champs** : titre, calendrier (seuls les calendriers modifiables, regroupés par compte), toute la journée, début et fin, lieu, lien de visio, notes.
+- **Valeurs par défaut** : aujourd'hui, la prochaine demi-heure ; un autre jour, 9:00 ; durée d'une heure, conservée quand on déplace le début ; dernier calendrier utilisé, sinon celui proposé par macOS.
+- **Validation** : titre, calendrier, fin après le début, lien en http(s) ; le message s'affiche en bas de la fenêtre.
+- **Enregistrement** via EventKit ; macOS synchronise ensuite l'événement avec le compte. Un lien de visio saisi active le bouton « Rejoindre ».
+
 ### Décisions et limites (M3)
 
 - **Sources** : EventKit seul pour l'instant, derrière l'interface `CalendarProvider`. Les fournisseurs Google Calendar et Microsoft Graph demandent d'enregistrer une application cliente OAuth chez Google Cloud et Microsoft Entra ID ; ils restent à faire (voir Questions ouvertes).
@@ -282,7 +292,7 @@ Toutes les sources implémentent une même interface `CalendarProvider` ; un agr
 
 ### Évolutions (hors v1)
 
-- Rappels (`EKReminder`), création rapide d'événement.
+- Rappels (`EKReminder`) ; modification et suppression d'événements depuis l'Island ; invités et alertes personnalisées à la création.
 - Statut « occupé » : passer le Mac en mode Concentration pendant les réunions.
 
 ---

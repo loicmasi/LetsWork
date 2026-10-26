@@ -129,6 +129,21 @@ struct CalendarTabView: View {
         HStack(spacing: 4) {
             dayButton("Aujourd'hui", isSelected: !showsTomorrow) { showsTomorrow = false }
             dayButton("Demain", isSelected: showsTomorrow) { showsTomorrow = true }
+            Button {
+                let day = showsTomorrow ? Calendar.current.date(byAdding: .day, value: 1, to: .now) ?? .now : .now
+                calendar.requestNewEvent(on: day)
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 24, height: 22)
+                    .background(Capsule().fill(.white.opacity(0.16)))
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(calendar.writableCalendars.isEmpty)
+            .help("Nouvel événement")
+            .accessibilityLabel("Nouvel événement")
         }
     }
 

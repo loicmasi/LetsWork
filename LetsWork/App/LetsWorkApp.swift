@@ -6,6 +6,8 @@ struct LetsWorkApp: App {
 
     var body: some Scene {
         MenuBarExtra("LetsWork", systemImage: "capsule.fill") {
+            Button("Nouvel événement…") { appDelegate.showNewEvent() }
+                .keyboardShortcut("n")
             Button("Réglages…") { appDelegate.showSettings() }
                 .keyboardShortcut(",")
             Divider()

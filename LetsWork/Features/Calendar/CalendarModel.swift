@@ -41,6 +41,8 @@ struct CalendarInfo: Identifiable, Equatable, Sendable {
     /// Compte d'origine : « iCloud », « Google », « Exchange »…
     var sourceTitle: String
     var color: CalendarColor
+    /// Faux pour les calendriers en lecture seule (abonnements, anniversaires, calendriers partagés).
+    var allowsModifications = true
 }
 
 enum MeetingService: Equatable, Sendable {
