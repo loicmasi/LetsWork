@@ -5,6 +5,7 @@ enum IslandTab: CaseIterable, Identifiable {
     case home
     case media
     case calendar
+    case game
 
     var id: Self { self }
 
@@ -13,6 +14,7 @@ enum IslandTab: CaseIterable, Identifiable {
         case .home: "Accueil"
         case .media: "Multimédia"
         case .calendar: "Calendrier"
+        case .game: "Morpion"
         }
     }
 
@@ -21,6 +23,7 @@ enum IslandTab: CaseIterable, Identifiable {
         case .home: "house.fill"
         case .media: "music.note"
         case .calendar: "calendar"
+        case .game: "gamecontroller.fill"
         }
     }
 }

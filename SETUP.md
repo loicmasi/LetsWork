@@ -269,7 +269,7 @@ LetsWork/
 │   │   ├── IslandState.swift           états fermé / compact / aperçu / étendu et règle de résolution
 │   │   ├── IslandMetrics.swift         dimensions par état, zone de survol
 │   │   ├── IslandModel.swift           @Observable : délais de survol, épinglage, activité, onglet
-│   │   ├── IslandTab.swift             onglets de l'état étendu (Accueil, Multimédia)
+│   │   ├── IslandTab.swift             onglets de l'état étendu (Accueil, Multimédia, Calendrier, Morpion)
 │   │   ├── ExpandedIslandView.swift    barre d'onglets et page d'accueil
 │   │   ├── IslandPanel.swift           NSPanel + vue conteneur (suivi de la souris, premier clic)
 │   │   ├── IslandWindowController.swift  écran cible, clics traversants, moniteurs d'événements
@@ -303,12 +303,16 @@ LetsWork/
 │   │   │   ├── MonthCalendarView.swift mini-calendrier du mois de l'accueil
 │   │   │   ├── EventDraft.swift        brouillon d'événement : valeurs par défaut, validation
 │   │   │   └── EventEditor.swift       fenêtre « Nouvel événement »
-│   │   └── Notifications/
-│   │       ├── SystemNotification.swift  notification et décodage du champ data
-│   │       ├── NotificationDatabase.swift  lecture SQLite de la base du centre de notifications
-│   │       ├── FileChangeWatcher.swift surveillance (kqueue) du dossier et des fichiers de la base
-│   │       ├── NotificationService.swift  @Observable : accès, nouvelles notifications
-│   │       └── NotificationPopupView.swift  pop-up au style de l'aperçu de piste
+│   │   ├── Notifications/
+│   │   │   ├── SystemNotification.swift  notification et décodage du champ data
+│   │   │   ├── NotificationDatabase.swift  lecture SQLite de la base du centre de notifications
+│   │   │   ├── FileChangeWatcher.swift surveillance (kqueue) du dossier et des fichiers de la base
+│   │   │   ├── NotificationService.swift  @Observable : accès, nouvelles notifications
+│   │   │   └── NotificationPopupView.swift  pop-up au style de l'aperçu de piste
+│   │   └── Game/
+│   │       ├── TicTacToe.swift         plateau, victoire, bot (minimax et niveaux)
+│   │       ├── TicTacToeGame.swift     @Observable : tours, score, niveau, premier joueur
+│   │       └── TicTacToeView.swift     onglet Morpion
 │   └── System/
 │       ├── Permissions/
 │       │   └── AccessibilityPermission.swift
@@ -319,7 +323,8 @@ LetsWork/
 │   ├── MediaTests.swift
 │   ├── HUDTests.swift
 │   ├── CalendarTests.swift
-│   └── NotificationTests.swift
+│   ├── NotificationTests.swift
+│   └── GameTests.swift
 ├── Vendor/
 │   ├── mediaremote-adapter/            sous-module git (v0.7.7)
 │   └── build/                          framework compilé (ignoré par git)

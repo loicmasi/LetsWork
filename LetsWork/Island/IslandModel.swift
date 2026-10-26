@@ -16,6 +16,8 @@ final class IslandModel {
     private(set) var notification: SystemNotification?
     /// Page affichée à l'état étendu ; conservée d'une ouverture à l'autre.
     private(set) var selectedTab: IslandTab = .home
+    /// Partie de morpion de l'onglet du même nom, conservée quand l'Island se referme.
+    let game = TicTacToeGame()
 
     /// Clic sur la notification affichée : le coordinateur la masque et passe à la suivante.
     @ObservationIgnored var onNotificationTap: (() -> Void)?

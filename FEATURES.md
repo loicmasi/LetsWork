@@ -16,6 +16,7 @@ Ce document décrit **ce que fait** l'application. La mise en place technique du
 - [F2 — HUD volume et luminosité](#f2--hud-volume-et-luminosité)
 - [F3 — Calendrier multi-sources](#f3--calendrier-multi-sources)
 - [F4 — Notifications des apps](#f4--notifications-des-apps)
+- [F5 — Morpion](#f5--morpion)
 - [Exigences non fonctionnelles](#exigences-non-fonctionnelles)
 - [Jalons](#jalons)
 - [Questions ouvertes](#questions-ouvertes)
@@ -49,7 +50,7 @@ Les trois fonctionnalités s'appuient sur un socle commun, à construire en prem
 - **Interactions** :
   - survol → passage en étendu après un court délai (≈ 150 ms) ; sortie du survol → retour à l'état précédent ;
   - clic → étendu « épinglé » jusqu'au prochain clic extérieur ;
-  - onglets de l'état étendu, en haut à gauche à côté de l'encoche : **Accueil** (date, heure, puis « En lecture : Titre — Artiste » ou « En pause : … » quand un média est en cours — un clic ouvre l'onglet Multimédia — sinon « Aucune activité pour le moment » ; à droite, un mini-calendrier du mois à la manière du widget Calendrier de macOS, qui ouvre l'onglet Calendrier) et **Multimédia** (lecteur, ou « Aucune lecture en cours ») ; le calendrier (F3) y ajoutera son onglet. L'onglet choisi est conservé d'une ouverture à l'autre, en commençant par Accueil ;
+  - onglets de l'état étendu, en haut à gauche à côté de l'encoche : **Accueil** (date, heure, puis « En lecture : Titre — Artiste » ou « En pause : … » quand un média est en cours — un clic ouvre l'onglet Multimédia — sinon « Aucune activité pour le moment » ; à droite, un mini-calendrier du mois à la manière du widget Calendrier de macOS, qui ouvre l'onglet Calendrier) **Multimédia** (lecteur, ou « Aucune lecture en cours »), **Calendrier** (F3) et **Morpion** (F5) ; le calendrier (F3) y ajoutera son onglet. L'onglet choisi est conservé d'une ouverture à l'autre, en commençant par Accueil ;
   - swipe horizontal à deux doigts sur l'Island → bascule entre les activités (média ↔ agenda).
 - **Clics traversants** : les zones transparentes de la fenêtre ne doivent jamais bloquer les clics sur la barre de menus ou les fenêtres situées dessous.
 - **Multi-écrans** : réglage « Afficher sur » : écran avec encoche (défaut) / écran principal / écran sous la souris / tous les écrans.
@@ -344,6 +345,29 @@ Afficher les notifications des autres apps (Messages, Slack, Mail…) dans une p
 
 ---
 
+## F5 — Morpion
+
+### Objectif
+
+Un onglet **Morpion** dans l'Island étendue, pour jouer contre un bot.
+
+### Règles et comportement
+
+- L'utilisateur joue les **X** (cyan), le bot les **O** (rose).
+- **Niveaux** : Facile (coups au hasard), Moyen (meilleur coup 7 fois sur 10), Imbattable (minimax : ne perd jamais). Le niveau est mémorisé.
+- **Premier joueur** : il alterne à chaque « Nouvelle partie ».
+- Le bot joue après un court temps de réflexion (0,45 s) ; on ne peut pas jouer pendant son tour.
+- La ligne gagnante est mise en évidence ; le score Vous / Bot / Nuls vaut pour la session.
+- La partie est conservée quand l'Island se referme.
+
+### Critères d'acceptation
+
+- [ ] Un clic sur une case vide y place un X, puis le bot répond.
+- [ ] Au niveau Imbattable, le joueur ne gagne jamais (vérifié par un test sur toutes les parties possibles).
+- [ ] « Nouvelle partie » vide le plateau et alterne le premier joueur.
+
+---
+
 ## Exigences non fonctionnelles
 
 | Domaine | Exigence |
@@ -369,6 +393,7 @@ Afficher les notifications des autres apps (Messages, Slack, Mail…) dans une p
 | **M3 — Calendrier** | EventKit, vues, alertes, détection de visio ; puis fournisseurs Google et Microsoft Graph. | Critères d'acceptation F3. | EventKit : accès et lecture des événements constatés sur la machine ; compact, alerte et « Rejoindre » à valider ; Google et Microsoft Graph à faire |
 | **M4 — Finition** | Assistant de premier lancement, localisation, accessibilité, signature Developer ID, notarisation, mises à jour (Sparkle). | DMG notarisé installable sur un autre Mac. | À faire |
 | **F4 — Notifications** | Lecture de la base du centre de notifications, pop-up dans l'Island, file d'attente, réglages et accès complet au disque. | Critères d'acceptation F4. | Validé sur macOS 27.0.1 : lecture, décodage et pop-up ; délai d'environ 5 s imposé par macOS |
+| **F5 — Morpion** | Onglet Morpion contre un bot, trois niveaux, score de session. | Critères d'acceptation F5. | Codé et testé ; à vérifier à l'écran |
 
 ---
 
