@@ -132,6 +132,12 @@ Voir et piloter **ce qui joue sur le Mac**, quelle que soit la source : applicat
 - [ ] Si l'adaptateur échoue (`test` ≠ 0), l'app bascule sur le canal AppleScript pour Music/Spotify et le signale dans les réglages.
 - [ ] CPU de l'app < 1 % en moyenne pendant une lecture (hors animation d'égaliseur).
 
+### Limites connues (M1)
+
+- **Repli AppleScript** : l'état de Spotify ou de Musique n'est connu qu'à leur prochaine notification (lecture, pause, changement de piste) ; pas de pochette ; pas de position de lecture pour Musique ; vidéos des navigateurs non détectées.
+- **Aperçu de changement de piste** : le titre est tronqué, pas encore défilant.
+- **Égaliseur** : animation décorative, sans lien avec le signal audio (voir évolutions).
+
 ### Évolutions (hors v1)
 
 - Visualiseur audio réel (spectre) via les *process taps* Core Audio (macOS 14.2+) — nécessite l'autorisation d'enregistrement audio.
@@ -278,13 +284,13 @@ Toutes les sources implémentent une même interface `CalendarProvider` ; un agr
 
 ## Jalons
 
-| Jalon | Contenu | Livrable vérifiable |
-|---|---|---|
-| **M0 — Socle** | Fenêtre Island, ancrage sur l'encoche, états fermé/compact/étendu, survol, icône de barre de menus, réglages vides, lancement à l'ouverture de session. | L'Island s'ouvre au survol, au-dessus d'une app plein écran. |
-| **M1 — Médias** | Intégration de mediaremote-adapter, modèle « Now Playing », vues compact/étendu, contrôles, repli AppleScript. | Critères d'acceptation F1. |
-| **M2 — HUD** | Spike touches/HUD natif, event tap, Core Audio, DisplayServices, vue HUD, assistant d'autorisation Accessibilité. | Critères d'acceptation F2. |
-| **M3 — Calendrier** | EventKit, vues, alertes, détection de visio ; puis fournisseurs Google et Microsoft Graph. | Critères d'acceptation F3. |
-| **M4 — Finition** | Assistant de premier lancement, localisation, accessibilité, signature Developer ID, notarisation, mises à jour (Sparkle). | DMG notarisé installable sur un autre Mac. |
+| Jalon | Contenu | Livrable vérifiable | Statut |
+|---|---|---|---|
+| **M0 — Socle** | Fenêtre Island, ancrage sur l'encoche, états fermé/compact/étendu, survol, icône de barre de menus, réglages vides, lancement à l'ouverture de session. | L'Island s'ouvre au survol, au-dessus d'une app plein écran. | Fait |
+| **M1 — Médias** | Intégration de mediaremote-adapter, modèle « Now Playing », vues compact/aperçu/étendu, contrôles, repli AppleScript. | Critères d'acceptation F1. | Codé ; validation avec l'adaptateur compilé et une vraie lecture à faire |
+| **M2 — HUD** | Spike touches/HUD natif, event tap, Core Audio, DisplayServices, vue HUD, assistant d'autorisation Accessibilité. | Critères d'acceptation F2. | À faire |
+| **M3 — Calendrier** | EventKit, vues, alertes, détection de visio ; puis fournisseurs Google et Microsoft Graph. | Critères d'acceptation F3. | À faire |
+| **M4 — Finition** | Assistant de premier lancement, localisation, accessibilité, signature Developer ID, notarisation, mises à jour (Sparkle). | DMG notarisé installable sur un autre Mac. | À faire |
 
 ---
 

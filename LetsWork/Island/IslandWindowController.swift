@@ -11,10 +11,10 @@ final class IslandWindowController {
     private var eventMonitors: [Any] = []
     private var notificationObservers: [NSObjectProtocol] = []
 
-    init() {
+    init(media: MediaService) {
         let fallback = NotchGeometry(size: CGSize(width: NotchGeometry.simulatedWidth, height: NotchGeometry.minimumSimulatedHeight), hasNotch: false)
         model = IslandModel(metrics: IslandMetrics(notch: fallback))
-        let container = IslandContainerView(rootView: IslandView(model: model))
+        let container = IslandContainerView(rootView: IslandView(model: model, media: media))
         container.onMouseEvent = { [weak self] in
             self?.handleMouse(at: NSEvent.mouseLocation)
         }

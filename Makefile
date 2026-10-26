@@ -1,7 +1,6 @@
 .PHONY: bootstrap adapter project open build test
 
-# M0 : l'adaptateur média n'est pas encore intégré au projet (voir SETUP.md, section 5).
-bootstrap: project
+bootstrap: adapter project
 
 adapter:
 	./scripts/build-mediaremote-adapter.sh

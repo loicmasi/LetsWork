@@ -2,6 +2,7 @@ import SwiftUI
 
 struct IslandView: View {
     let model: IslandModel
+    let media: MediaService
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -41,36 +42,26 @@ struct IslandView: View {
         case .closed:
             Color.clear
         case .compact:
-            CompactPlaceholderView(notch: metrics.notch)
+            switch model.activity {
+            case .media:
+                MediaCompactView(media: media, notch: metrics.notch)
+            case nil:
+                Color.clear
+            }
+        case .peek:
+            MediaPeekView(media: media, notch: metrics.notch)
         case .expanded:
-            ExpandedPlaceholderView(notchHeight: metrics.notch.size.height)
+            if media.nowPlaying != nil {
+                MediaExpandedView(media: media, notchHeight: metrics.notch.size.height)
+            } else {
+                IdleExpandedView(notchHeight: metrics.notch.size.height)
+            }
         }
     }
 }
 
-/// Contenu provisoire de l'état compact, en attendant les activités réelles (M1+).
-private struct CompactPlaceholderView: View {
-    let notch: NotchGeometry
-
-    var body: some View {
-        HStack(spacing: 0) {
-            Image(systemName: "waveform")
-                .foregroundStyle(.white)
-                .frame(width: IslandMetrics.compactWingWidth)
-            Spacer()
-                .frame(width: notch.size.width)
-            Circle()
-                .fill(.green)
-                .frame(width: 8, height: 8)
-                .frame(width: IslandMetrics.compactWingWidth)
-        }
-        .font(.system(size: 13, weight: .semibold))
-        .frame(height: notch.size.height)
-    }
-}
-
-/// Contenu provisoire de l'état étendu (M0) : date, heure et absence d'activité.
-private struct ExpandedPlaceholderView: View {
+/// État étendu sans activité : date, heure et absence d'activité.
+private struct IdleExpandedView: View {
     let notchHeight: CGFloat
 
     var body: some View {

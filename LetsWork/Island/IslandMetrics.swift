@@ -5,7 +5,10 @@ struct IslandMetrics: Equatable {
     /// Taille de la fenêtre transparente dans laquelle l'Island s'anime.
     static let canvasSize = CGSize(width: 640, height: 240)
     static let compactWingWidth: CGFloat = 72
-    static let expandedSize = CGSize(width: 520, height: 180)
+    /// Ligne ajoutée sous l'encoche en aperçu, et largeur minimale pour y lire un titre.
+    static let peekExtraHeight: CGFloat = 30
+    static let peekMinimumWidth: CGFloat = 380
+    static let expandedSize = CGSize(width: 520, height: 190)
     /// Marge autour de la forme pour déclencher le survol sans être pixel-perfect.
     static let hoverMargin: CGFloat = 6
 
@@ -18,6 +21,11 @@ struct IslandMetrics: Equatable {
             notch.size
         case .compact:
             CGSize(width: notch.size.width + 2 * Self.compactWingWidth, height: notch.size.height)
+        case .peek:
+            CGSize(
+                width: max(Self.peekMinimumWidth, notch.size.width + 2 * Self.compactWingWidth),
+                height: notch.size.height + Self.peekExtraHeight
+            )
         case .expanded:
             CGSize(
                 width: max(Self.expandedSize.width, notch.size.width + 2 * Self.compactWingWidth),
@@ -30,7 +38,7 @@ struct IslandMetrics: Equatable {
     func topCornerRadius(for state: IslandState) -> CGFloat {
         switch state {
         case .closed: 0
-        case .compact: 6
+        case .compact, .peek: 6
         case .expanded: 12
         }
     }
@@ -39,6 +47,7 @@ struct IslandMetrics: Equatable {
         switch state {
         case .closed: 10
         case .compact: 12
+        case .peek: 18
         case .expanded: 26
         }
     }

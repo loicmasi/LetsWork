@@ -5,7 +5,12 @@ import SwiftUI
 /// depuis une app sans icône dans le Dock (`LSUIElement`).
 @MainActor
 final class SettingsWindowController {
+    private let media: MediaService
     private var window: NSWindow?
+
+    init(media: MediaService) {
+        self.media = media
+    }
 
     func show() {
         let window = window ?? makeWindow()
@@ -15,7 +20,7 @@ final class SettingsWindowController {
     }
 
     private func makeWindow() -> NSWindow {
-        let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView()))
+        let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(media: media)))
         window.title = String(localized: "Réglages LetsWork")
         window.styleMask = [.titled, .closable]
         window.isReleasedWhenClosed = false

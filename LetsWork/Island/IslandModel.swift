@@ -10,6 +10,7 @@ final class IslandModel {
 
     private(set) var state: IslandState = .closed
     private(set) var metrics: IslandMetrics
+    private(set) var activity: IslandActivity?
 
     @ObservationIgnored private var inputs = IslandInputs()
     @ObservationIgnored private var pendingTransition: Task<Void, Never>?
@@ -17,8 +18,6 @@ final class IslandModel {
     init(metrics: IslandMetrics) {
         self.metrics = metrics
     }
-
-    var hasActivity: Bool { inputs.hasActivity }
 
     func updateMetrics(_ metrics: IslandMetrics) {
         guard metrics != self.metrics else { return }
@@ -43,9 +42,16 @@ final class IslandModel {
         resolveNow()
     }
 
-    func setHasActivity(_ hasActivity: Bool) {
-        guard hasActivity != inputs.hasActivity else { return }
-        inputs.hasActivity = hasActivity
+    func setActivity(_ activity: IslandActivity?) {
+        guard activity != self.activity else { return }
+        self.activity = activity
+        inputs.hasActivity = activity != nil
+        resolveNow()
+    }
+
+    func setPeeking(_ peeking: Bool) {
+        guard peeking != inputs.isPeeking else { return }
+        inputs.isPeeking = peeking
         resolveNow()
     }
 

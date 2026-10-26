@@ -45,6 +45,13 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.projects.letswork
+        # La phase d'embarquement de l'adaptateur lit Vendor/ sans déclarer ses fichiers.
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+    postBuildScripts:
+      # Facultatif : sans `make adapter`, l'app se rabat sur AppleScript (voir SETUP.md, section 7).
+      - name: Embarquer mediaremote-adapter
+        script: '"$SRCROOT/scripts/embed-mediaremote-adapter.sh"'
+        basedOnDependencyAnalysis: false
     scheme:
       testTargets:
         - LetsWorkTests

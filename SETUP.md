@@ -13,7 +13,7 @@ Les fonctionnalités à développer sont décrites dans [FEATURES.md](FEATURES.m
 4. [Première installation](#4-première-installation)
 5. [Le projet Xcode (project.yml)](#5-le-projet-xcode-projectyml)
 6. [Commandes du Makefile](#6-commandes-du-makefile)
-7. [Intégrer mediaremote-adapter (M1)](#7-intégrer-mediaremote-adapter-m1)
+7. [Adaptateur média (mediaremote-adapter)](#7-adaptateur-média-mediaremote-adapter)
 8. [Autorisations et signature pendant le développement](#8-autorisations-et-signature-pendant-le-développement)
 9. [Architecture et conventions](#9-architecture-et-conventions)
 10. [Distribution](#10-distribution)
@@ -46,7 +46,7 @@ Les fonctionnalités à développer sont décrites dans [FEATURES.md](FEATURES.m
 | Xcode | 26 ou plus récent | 27.1 (Swift 6.4) ✅ |
 | Homebrew | — | installé ✅ |
 | XcodeGen | dernière version | 2.46.0 ✅ |
-| CMake | ≥ 3.20 (requis à partir de M1) | 4.4.4 ✅ |
+| CMake | ≥ 3.20 (adaptateur média) | 4.4.4 ✅ |
 | Certificat Apple Development | requis à partir de M2 (voir section 8) | **aucun installé** |
 | Compte Apple Developer | gratuit pour le développement, payant (99 $/an) pour distribuer avec Developer ID | à vérifier |
 
@@ -76,11 +76,13 @@ Après un `git clone`, récupérer l'adaptateur média et ses propres sous-modul
 git submodule update --init --recursive
 ```
 
-Générer le projet Xcode depuis `project.yml` :
+Compiler l'adaptateur média, puis générer le projet Xcode depuis `project.yml` :
 
 ```bash
 make bootstrap
 ```
+
+Sans adaptateur compilé, le projet se construit quand même : l'app se rabat sur Musique et Spotify (voir section 7).
 
 Ouvrir dans Xcode, puis lancer avec ⌘R :
 
@@ -88,12 +90,14 @@ Ouvrir dans Xcode, puis lancer avec ⌘R :
 make open
 ```
 
-**Résultat attendu (M0)** :
+**Résultat attendu (M1)** :
 
 - l'Island fermée est invisible, confondue avec l'encoche ;
-- au survol de l'encoche, elle se déploie (date, heure, « Aucune activité pour le moment ») et se referme quand la souris s'éloigne ;
+- au survol de l'encoche, elle se déploie et se referme quand la souris s'éloigne : lecteur média si une lecture est connue, sinon date et heure ;
 - un clic sur l'Island la garde ouverte ; un clic ailleurs la referme ;
-- une icône en forme de capsule apparaît dans la barre de menus, avec **Réglages…**, **Simuler une activité (état compact)** (builds Debug uniquement) et **Quitter** ;
+- pendant une lecture, l'Island passe en compact (pochette à gauche, égaliseur à droite) ; à chaque nouvelle piste, le titre s'affiche dessous pendant 3 s ; après une pause, elle se referme au bout de 5 s ;
+- **Réglages › Médias** indique la source utilisée : « Now Playing de macOS » (adaptateur) ou « Repli AppleScript » ;
+- une icône en forme de capsule apparaît dans la barre de menus, avec **Réglages…** et **Quitter** ;
 - aucune icône dans le Dock.
 
 ---
@@ -124,7 +128,7 @@ make open
 
 | Commande | Effet |
 |---|---|
-| `make bootstrap` | Première installation. En M0 : génère le projet. À partir de M1 : compile aussi l'adaptateur média. |
+| `make bootstrap` | Première installation : compile l'adaptateur média, puis génère le projet. |
 | `make project` | Régénère `LetsWork.xcodeproj` depuis `project.yml`. |
 | `make open` | Régénère puis ouvre le projet dans Xcode. |
 | `make build` | Compile la configuration Debug en ligne de commande. |
@@ -133,11 +137,11 @@ make open
 
 ---
 
-## 7. Intégrer mediaremote-adapter (M1)
+## 7. Adaptateur média (mediaremote-adapter)
 
-Depuis macOS 15.4, une application ne peut plus lire directement le framework privé MediaRemote. L'adaptateur fait exécuter un petit framework par `/usr/bin/perl` (binaire système autorisé) et diffuse les infos de lecture en JSON.
+Depuis macOS 15.4, une application ne peut plus lire directement le framework privé MediaRemote. L'adaptateur fait exécuter un petit framework par `/usr/bin/perl` (binaire système autorisé) et diffuse les infos de lecture en JSON. LetsWork lance `stream --no-diff --micros --debounce=100`, et `send <id>` / `seek <µs>` pour les commandes.
 
-**État actuel** : le sous-module `Vendor/mediaremote-adapter` est ajouté et épinglé sur `v0.7.7`, et le script `scripts/build-mediaremote-adapter.sh` est en place. Le framework n'a **pas encore été compilé** et n'est pas encore référencé par `project.yml`.
+**État actuel** : sous-module `Vendor/mediaremote-adapter` épinglé sur `v0.7.7`, intégré au build. Le framework n'a **pas encore été compilé sur ce Mac** : lancer `make adapter`, puis recompiler l'app.
 
 ### 7.1 Compiler et tester l'adaptateur
 
@@ -159,29 +163,23 @@ Lancer une musique ou une vidéo YouTube, puis :
 
 On doit obtenir un JSON avec notamment `bundleIdentifier`, `playing`, `title`, `artist`, `duration`, `elapsedTime`.
 
-### 7.2 Embarquer l'adaptateur dans l'app
+### 7.2 Embarquement dans l'app
 
-LetsWork embarque :
+La phase de build **« Embarquer mediaremote-adapter »** (`scripts/embed-mediaremote-adapter.sh`, déclarée dans `project.yml`) :
 
-- `MediaRemoteAdapter.framework` → dans `LetsWork.app/Contents/Frameworks/` (signé à la copie, **non lié** à l'app) ;
-- `mediaremote-adapter.pl` → dans `LetsWork.app/Contents/Resources/`.
+- copie `Vendor/build/MediaRemoteAdapter.framework` dans `LetsWork.app/Contents/Frameworks/` et le signe avec le hardened runtime (horodaté en Release) ;
+- copie `mediaremote-adapter.pl` dans `LetsWork.app/Contents/Resources/` ;
+- si le framework n'a pas été compilé, n'embarque rien et affiche une note dans le journal de build.
 
-Ajouter à la cible `LetsWork` de `project.yml` :
+Le framework n'est **jamais lié** à l'app : c'est `/usr/bin/perl` qui le charge. Une phase de script, plutôt qu'une dépendance XcodeGen, permet de compiler l'app même sans framework.
 
-```yaml
-    sources:
-      - path: LetsWork
-      - path: Vendor/mediaremote-adapter/bin/mediaremote-adapter.pl
-        buildPhase: resources
-    dependencies:
-      # Embarqué et signé, mais jamais lié : c'est /usr/bin/perl qui le charge.
-      - framework: Vendor/build/MediaRemoteAdapter.framework
-        embed: true
-        link: false
-        codeSign: true
-```
+### 7.3 Choix de la source au lancement
 
-Puis faire dépendre `bootstrap` de `adapter` dans le `Makefile` (`bootstrap: adapter project`).
+1. Framework et script présents dans l'app → **adaptateur** (« Now Playing de macOS » dans les réglages).
+2. Sinon, ou après deux arrêts de l'adaptateur en moins de 10 s → **repli AppleScript** :
+   - lecture des notifications distribuées `com.spotify.client.PlaybackStateChanged` et `com.apple.Music.playerInfo` (sans autorisation) ;
+   - commandes par AppleScript, uniquement vers une app déjà ouverte (autorisation Automatisation au premier clic) ;
+   - limites : état connu seulement à la prochaine notification (lecture, pause, changement de piste), pas de pochette, pas de position pour Musique, vidéos des navigateurs non détectées.
 
 > Le projet indique que son API peut changer entre versions mineures : ne changer de tag (`git -C Vendor/mediaremote-adapter checkout <tag>`) qu'après avoir refait les tests ci-dessus.
 
@@ -195,7 +193,7 @@ Puis faire dépendre `bootstrap` de `adapter` dans le `Makefile` (`bootstrap: ad
 | Calendriers (accès complet) | F3 | Invite système au premier accès, puis › Calendriers |
 | Automatisation (Musique, Spotify) | F1, canal de repli | Invite système au premier Apple Event, puis › Automatisation |
 
-M0 ne demande aucune autorisation.
+Seul le repli AppleScript (M1) demande une autorisation : Automatisation, au premier clic sur un contrôle de lecture.
 
 **Signature stable — à faire avant M2** : macOS associe les autorisations à la signature de l'app. Le projet est actuellement signé en local (ad hoc, `CODE_SIGN_IDENTITY: "-"`) car aucun certificat n'est installé sur ce Mac. Avec cette signature, l'autorisation Accessibilité serait perdue à chaque build. Avant M2 :
 
@@ -236,8 +234,9 @@ LetsWork/
 │   │   ├── AppDelegate.swift           crée l'Island et la fenêtre de réglages
 │   │   └── LaunchAtLogin.swift         ouverture de session (SMAppService)
 │   ├── Island/
+│   │   ├── ActivityCoordinator.swift   arbitrage des activités (aperçu, délai de grâce)
 │   │   ├── NotchGeometry.swift         taille de l'encoche, ou encoche simulée
-│   │   ├── IslandState.swift           états fermé / compact / étendu et règle de résolution
+│   │   ├── IslandState.swift           états fermé / compact / aperçu / étendu et règle de résolution
 │   │   ├── IslandMetrics.swift         dimensions par état, zone de survol
 │   │   ├── IslandModel.swift           @Observable : délais de survol, épinglage, activité
 │   │   ├── IslandPanel.swift           NSPanel + vue conteneur (suivi de la souris, premier clic)
@@ -248,15 +247,27 @@ LetsWork/
 │   │   ├── AppSettings.swift           clés UserDefaults, écran d'affichage
 │   │   ├── SettingsView.swift          formulaire de réglages
 │   │   └── SettingsWindowController.swift
-│   ├── Features/                       (à venir) Media/, HUD/, Calendar/
+│   ├── Features/
+│   │   ├── Media/
+│   │   │   ├── NowPlaying.swift        état de lecture, commandes, protocole NowPlayingSource
+│   │   │   ├── AdapterStreamDecoder.swift  décodage du JSON de l'adaptateur
+│   │   │   ├── MediaRemoteAdapterSource.swift  processus perl de l'adaptateur
+│   │   │   ├── AppleScriptSource.swift repli Musique / Spotify
+│   │   │   ├── MediaService.swift      @Observable : choix de la source, pochette, commandes
+│   │   │   ├── MediaCompactView.swift  compact, aperçu, pochette, égaliseur
+│   │   │   └── MediaExpandedView.swift lecteur étendu, progression
+│   │   ├── HUD/                        (à venir, M2)
+│   │   └── Calendar/                   (à venir, M3)
 │   └── System/                         (à venir) Permissions/, Private/
 ├── LetsWorkTests/
-│   └── IslandTests.swift
+│   ├── IslandTests.swift
+│   └── MediaTests.swift
 ├── Vendor/
 │   ├── mediaremote-adapter/            sous-module git (v0.7.7)
 │   └── build/                          framework compilé (ignoré par git)
 └── scripts/
-    └── build-mediaremote-adapter.sh
+    ├── build-mediaremote-adapter.sh    compile l'adaptateur (make adapter)
+    └── embed-mediaremote-adapter.sh    phase de build qui l'embarque dans l'app
 ```
 
 ### Fonctionnement de l'Island (M0)
@@ -267,7 +278,7 @@ LetsWork/
 - `IslandModel` applique les délais : 150 ms avant d'ouvrir, 250 ms avant de refermer. Un clic épingle l'Island ; un clic ailleurs (moniteur global) retire l'épinglage.
 - La fenêtre est repositionnée quand les écrans changent et quand le réglage « Afficher sur » change.
 
-### Flux de données (cible)
+### Flux de données
 
 ```text
 Sources (adaptateur média, Core Audio, touches, EventKit…)
@@ -282,7 +293,7 @@ ActivityCoordinator (@MainActor) — applique la priorité définie dans FEATURE
 IslandModel → IslandView (SwiftUI) — animations
 ```
 
-En M0, l'activité est simulée depuis le menu (`Simuler une activité`) ; le coordinateur arrive avec la première vraie activité (M1).
+En M1, seule l'activité média existe : `MediaService.onChange` prévient `ActivityCoordinator`, qui active l'activité `.media`, déclenche l'aperçu de 3 s à chaque nouvelle piste et retire l'activité 5 s après une pause.
 
 ### Conventions
 
@@ -317,7 +328,9 @@ Tout le code embarqué (dont `MediaRemoteAdapter.framework`) doit être signé a
 | `xcodegen: command not found` | Outil non installé | `brew install xcodegen` |
 | `Cannot code sign because the target does not have an Info.plist` (tests) | `GENERATE_INFOPLIST_FILE` absent de la cible de tests | Vérifier la cible `LetsWorkTests` dans `project.yml` |
 | Dates affichées en anglais | Langue de développement non déclarée | `developmentLanguage: fr` dans `project.yml`, puis `make project` |
-| Build : `MediaRemoteAdapter.framework` introuvable (M1) | Adaptateur non compilé | `make adapter` |
+| Réglages › Médias indique « Repli AppleScript » | Adaptateur non compilé ou en échec | `make adapter`, recompiler ; sinon tester l'adaptateur (section 7.1) |
+| En repli, rien ne s'affiche alors que Spotify joue déjà | L'état n'arrive qu'avec la prochaine notification | Mettre en pause puis relancer la lecture, ou compiler l'adaptateur |
+| En repli, les boutons de lecture n'ont aucun effet | Autorisation Automatisation refusée | Réglages Système › Confidentialité et sécurité › Automatisation |
 | `cmake` échoue sur des fichiers manquants | Sous-modules de l'adaptateur absents | `git submodule update --init --recursive` |
 | Test de l'adaptateur ≠ 0 | Chemins relatifs, ou macOS a de nouveau restreint MediaRemote | Utiliser des chemins absolus ; consulter les issues du projet ; s'appuyer sur le repli AppleScript |
 | L'Island apparaît sous la barre de menus | Niveau de fenêtre trop bas | Vérifier `level` dans `IslandPanel` |

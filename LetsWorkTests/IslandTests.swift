@@ -34,6 +34,9 @@ struct IslandStateTests {
         (IslandInputs(isHovering: true), .expanded),
         (IslandInputs(isPinned: true), .expanded),
         (IslandInputs(isHovering: true, hasActivity: true), .expanded),
+        (IslandInputs(hasActivity: true, isPeeking: true), .peek),
+        (IslandInputs(isPeeking: true), .closed),
+        (IslandInputs(isPinned: true, hasActivity: true, isPeeking: true), .expanded),
     ])
     func resolve(inputs: IslandInputs, expected: IslandState) {
         #expect(IslandState.resolve(inputs) == expected)
@@ -51,6 +54,12 @@ struct IslandMetricsTests {
 
     @Test func compactAddsWingsOnBothSides() {
         #expect(metrics.size(for: .compact).width == 185 + 2 * IslandMetrics.compactWingWidth)
+    }
+
+    @Test func peekAddsATitleLineBelowTheNotch() {
+        let size = metrics.size(for: .peek)
+        #expect(size.height == 32 + IslandMetrics.peekExtraHeight)
+        #expect(size.width >= metrics.size(for: .compact).width)
     }
 
     @Test func expandedIslandFitsInCanvas() {
@@ -80,9 +89,12 @@ struct IslandModelTests {
     }
 
     @Test func activityShowsCompactIsland() {
-        model.setHasActivity(true)
+        model.setActivity(.media)
         #expect(model.state == .compact)
-        model.setHasActivity(false)
+        model.setPeeking(true)
+        #expect(model.state == .peek)
+        model.setPeeking(false)
+        model.setActivity(nil)
         #expect(model.state == .closed)
     }
 

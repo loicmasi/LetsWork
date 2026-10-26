@@ -8,9 +8,6 @@ struct LetsWorkApp: App {
         MenuBarExtra("LetsWork", systemImage: "capsule.fill") {
             Button("Réglages…") { appDelegate.showSettings() }
                 .keyboardShortcut(",")
-            #if DEBUG
-            Button("Simuler une activité (état compact)") { appDelegate.toggleSimulatedActivity() }
-            #endif
             Divider()
             Button("Quitter LetsWork") { NSApp.terminate(nil) }
                 .keyboardShortcut("q")

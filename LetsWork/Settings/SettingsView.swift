@@ -2,6 +2,8 @@ import ServiceManagement
 import SwiftUI
 
 struct SettingsView: View {
+    let media: MediaService
+
     @AppStorage(AppSettings.displayTargetKey) private var displayTarget: DisplayTarget = .notchScreen
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
     @State private var launchAtLoginStatus = LaunchAtLogin.status
@@ -34,6 +36,16 @@ struct SettingsView: View {
                     }
                 }
             }
+            Section("Médias") {
+                LabeledContent("Source") {
+                    Text(media.status.title)
+                }
+                if let detail = media.status.detail {
+                    Text(detail)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
         .formStyle(.grouped)
         .frame(width: 460)
@@ -51,5 +63,26 @@ struct SettingsView: View {
             launchAtLogin = LaunchAtLogin.isEnabled
         }
         launchAtLoginStatus = LaunchAtLogin.status
+    }
+}
+
+private extension MediaService.Status {
+    var title: LocalizedStringKey {
+        switch self {
+        case .stopped: "Arrêtée"
+        case .adapter: "Now Playing de macOS"
+        case .appleScriptFallback: "Repli AppleScript (Musique, Spotify)"
+        }
+    }
+
+    var detail: LocalizedStringKey? {
+        switch self {
+        case .stopped, .adapter:
+            nil
+        case .appleScriptFallback(adapterMissing: true):
+            "L'adaptateur média n'est pas embarqué : lancer « make adapter » puis recompiler. Les vidéos des navigateurs ne sont pas détectées."
+        case .appleScriptFallback(adapterMissing: false):
+            "L'adaptateur média a échoué à plusieurs reprises, probablement après une mise à jour de macOS. Les vidéos des navigateurs ne sont pas détectées."
+        }
     }
 }
