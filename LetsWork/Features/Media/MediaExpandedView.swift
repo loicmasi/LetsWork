@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Lecteur complet de l'état étendu : pochette, titre, source, progression et contrôles.
+/// Onglet Multimédia : pochette, titre, source, progression et contrôles, ou un message si rien ne joue.
 struct MediaExpandedView: View {
     let media: MediaService
     let notchHeight: CGFloat
@@ -51,6 +51,20 @@ struct MediaExpandedView: View {
             .padding(.horizontal, 28)
             .padding(.top, notchHeight + 8)
             .padding(.bottom, 16)
+        } else {
+            VStack(spacing: 8) {
+                Image(systemName: "music.note")
+                    .font(.system(size: 28))
+                    .foregroundStyle(.secondary)
+                Text("Aucune lecture en cours")
+                    .font(.title3.weight(.semibold))
+                Text("Lancez Musique, Spotify ou une vidéo dans votre navigateur.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.top, notchHeight)
         }
     }
 

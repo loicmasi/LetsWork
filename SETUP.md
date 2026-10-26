@@ -265,11 +265,13 @@ LetsWork/
 │   │   ├── NotchGeometry.swift         taille de l'encoche, ou encoche simulée
 │   │   ├── IslandState.swift           états fermé / compact / aperçu / étendu et règle de résolution
 │   │   ├── IslandMetrics.swift         dimensions par état, zone de survol
-│   │   ├── IslandModel.swift           @Observable : délais de survol, épinglage, activité
+│   │   ├── IslandModel.swift           @Observable : délais de survol, épinglage, activité, onglet
+│   │   ├── IslandTab.swift             onglets de l'état étendu (Accueil, Multimédia)
+│   │   ├── ExpandedIslandView.swift    barre d'onglets et page d'accueil
 │   │   ├── IslandPanel.swift           NSPanel + vue conteneur (suivi de la souris, premier clic)
 │   │   ├── IslandWindowController.swift  écran cible, clics traversants, moniteurs d'événements
 │   │   ├── NotchShape.swift            forme animable de l'Island
-│   │   └── IslandView.swift            vue SwiftUI et contenus provisoires
+│   │   └── IslandView.swift            forme animée et contenu de chaque état
 │   ├── Settings/
 │   │   ├── AppSettings.swift           clés UserDefaults, écran d'affichage
 │   │   ├── SettingsView.swift          formulaire de réglages

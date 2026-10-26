@@ -98,10 +98,37 @@ struct IslandModelTests {
         #expect(model.state == .closed)
     }
 
+    @Test func tabsStartOnHomeInBarOrder() {
+        #expect(IslandTab.allCases == [.home, .media])
+        #expect(model.selectedTab == .home)
+    }
+
+    @Test func selectedTabSurvivesClosingAndReopening() {
+        model.togglePinned()
+        model.selectTab(.media)
+        model.dismissPin()
+        #expect(model.state == .closed)
+        model.togglePinned()
+        #expect(model.selectedTab == .media)
+    }
+
     @Test func hoverExpandsAfterDelay() async throws {
         model.setHovering(true)
         #expect(model.state == .closed)
         try await Task.sleep(for: IslandModel.hoverInDelay * 3)
         #expect(model.state == .expanded)
+    }
+}
+
+@MainActor
+struct HomeViewTests {
+    @Test func summarizesPlayingTrack() {
+        let nowPlaying = NowPlaying(title: "Club", artist: "Lomepal", isPlaying: true)
+        #expect(HomeView.mediaSummary(of: nowPlaying) == "En lecture : Club — Lomepal")
+    }
+
+    @Test func summarizesPausedTrackWithoutArtist() {
+        let nowPlaying = NowPlaying(title: "Vidéo YouTube", isPlaying: false)
+        #expect(HomeView.mediaSummary(of: nowPlaying) == "En pause : Vidéo YouTube")
     }
 }

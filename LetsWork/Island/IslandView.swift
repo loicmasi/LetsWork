@@ -55,35 +55,7 @@ struct IslandView: View {
                 HUDView(state: hud, notch: metrics.notch)
             }
         case .expanded:
-            if media.nowPlaying != nil {
-                MediaExpandedView(media: media, notchHeight: metrics.notch.size.height)
-            } else {
-                IdleExpandedView(notchHeight: metrics.notch.size.height)
-            }
-        }
-    }
-}
-
-/// État étendu sans activité : date, heure et absence d'activité.
-private struct IdleExpandedView: View {
-    let notchHeight: CGFloat
-
-    var body: some View {
-        TimelineView(.everyMinute) { context in
-            VStack(alignment: .leading, spacing: 6) {
-                Text(context.date, format: .dateTime.weekday(.wide).day().month(.wide))
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                Text(context.date, format: .dateTime.hour().minute())
-                    .font(.system(size: 34, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
-                Text("Aucune activité pour le moment")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 24)
-            .padding(.top, notchHeight + 8)
+            ExpandedIslandView(model: model, media: media, notchHeight: metrics.notch.size.height)
         }
     }
 }

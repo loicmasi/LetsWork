@@ -12,6 +12,8 @@ final class IslandModel {
     private(set) var metrics: IslandMetrics
     private(set) var activity: IslandActivity?
     private(set) var hud: HUDState?
+    /// Page affichée à l'état étendu ; conservée d'une ouverture à l'autre.
+    private(set) var selectedTab: IslandTab = .home
 
     @ObservationIgnored private var inputs = IslandInputs()
     @ObservationIgnored private var pendingTransition: Task<Void, Never>?
@@ -48,6 +50,10 @@ final class IslandModel {
         self.activity = activity
         inputs.hasActivity = activity != nil
         resolveNow()
+    }
+
+    func selectTab(_ tab: IslandTab) {
+        selectedTab = tab
     }
 
     /// `nil` masque le HUD et rend la main à l'état précédent.

@@ -48,6 +48,7 @@ Les trois fonctionnalités s'appuient sur un socle commun, à construire en prem
 - **Interactions** :
   - survol → passage en étendu après un court délai (≈ 150 ms) ; sortie du survol → retour à l'état précédent ;
   - clic → étendu « épinglé » jusqu'au prochain clic extérieur ;
+  - onglets de l'état étendu, en haut à gauche à côté de l'encoche : **Accueil** (date, heure, puis « En lecture : Titre — Artiste » ou « En pause : … » quand un média est en cours — un clic ouvre l'onglet Multimédia — sinon « Aucune activité pour le moment ») et **Multimédia** (lecteur, ou « Aucune lecture en cours ») ; le calendrier (F3) y ajoutera son onglet. L'onglet choisi est conservé d'une ouverture à l'autre, en commençant par Accueil ;
   - swipe horizontal à deux doigts sur l'Island → bascule entre les activités (média ↔ agenda).
 - **Clics traversants** : les zones transparentes de la fenêtre ne doivent jamais bloquer les clics sur la barre de menus ou les fenêtres situées dessous.
 - **Multi-écrans** : réglage « Afficher sur » : écran avec encoche (défaut) / écran principal / écran sous la souris / tous les écrans.
@@ -97,7 +98,7 @@ Voir et piloter **ce qui joue sur le Mac**, quelle que soit la source : applicat
 | État | Contenu |
 |---|---|
 | **Compact** | Aile gauche : pochette miniature (ou icône de la source). Aile droite : égaliseur animé si lecture en cours, icône pause sinon. |
-| **Étendu** | Pochette grand format, titre, artiste/chaîne, album, icône de la source, barre de progression interactive (temps écoulé / durée), boutons précédent / lecture-pause / suivant. Teinte d'accent dérivée de la couleur dominante de la pochette. Sur la partie écoulée de la barre, trois couches de dômes animées défilent en sens opposés, chacune dans une nuance de la pochette (discrète, intermédiaire, contrastée) ; elles s'aplatissent et se figent en pause, et restent immobiles si « Réduire les animations » est activé. |
+| **Étendu** (onglet Multimédia) | Pochette grand format, titre, artiste/chaîne, album, icône de la source, barre de progression interactive (temps écoulé / durée), boutons précédent / lecture-pause / suivant. Teinte d'accent dérivée de la couleur dominante de la pochette. Sur la partie écoulée de la barre, trois couches de dômes animées défilent en sens opposés, chacune dans une nuance de la pochette (discrète, intermédiaire, contrastée) ; elles s'aplatissent et se figent en pause, et restent immobiles si « Réduire les animations » est activé. |
 | **Changement de piste** | Passage en compact enrichi (titre défilant) pendant ≈ 3 s. |
 
 ### Sources et méthodes de récupération
