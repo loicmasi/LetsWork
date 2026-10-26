@@ -84,11 +84,19 @@ make bootstrap
 
 Sans adaptateur compilé, le projet se construit quand même : l'app se rabat sur Musique et Spotify (voir section 7).
 
-Ouvrir dans Xcode, puis lancer avec ⌘R :
+Compiler et lancer l'app (ferme d'abord l'instance en cours, quelle que soit sa copie) :
+
+```bash
+make run
+```
+
+Ou ouvrir le projet dans Xcode et lancer avec ⌘R :
 
 ```bash
 make open
 ```
+
+> Xcode compile dans son propre dossier (`~/Library/Developer/Xcode/DerivedData`), le Makefile dans `build/DerivedData`. Relancer l'app depuis Spotlight ou le Finder peut ouvrir une copie périmée : utiliser `make run` ou ⌘R.
 
 **Résultat attendu (M1)** :
 
@@ -131,7 +139,8 @@ make open
 | `make bootstrap` | Première installation : compile l'adaptateur média, puis génère le projet. |
 | `make project` | Régénère `LetsWork.xcodeproj` depuis `project.yml`. |
 | `make open` | Régénère puis ouvre le projet dans Xcode. |
-| `make build` | Compile la configuration Debug en ligne de commande. |
+| `make build` | Compile la configuration Debug dans `build/DerivedData`. |
+| `make run` | Compile, quitte l'instance en cours et lance ce build. |
 | `make test` | Lance les tests unitaires. |
 | `make adapter` | Compile `MediaRemoteAdapter.framework` dans `Vendor/build/` (M1). |
 
@@ -141,7 +150,7 @@ make open
 
 Depuis macOS 15.4, une application ne peut plus lire directement le framework privé MediaRemote. L'adaptateur fait exécuter un petit framework par `/usr/bin/perl` (binaire système autorisé) et diffuse les infos de lecture en JSON. LetsWork lance `stream --no-diff --micros --debounce=100`, et `send <id>` / `seek <µs>` pour les commandes.
 
-**État actuel** : sous-module `Vendor/mediaremote-adapter` épinglé sur `v0.7.7`, intégré au build. Le framework n'a **pas encore été compilé sur ce Mac** : lancer `make adapter`, puis recompiler l'app.
+**État actuel** : sous-module `Vendor/mediaremote-adapter` épinglé sur `v0.7.7`, compilé et intégré au build. Validé sur ce Mac (macOS 27.0.1) avec Spotify : titre, pochette, progression et couleur d'accent dès le lancement.
 
 ### 7.1 Compiler et tester l'adaptateur
 
@@ -178,8 +187,13 @@ Le framework n'est **jamais lié** à l'app : c'est `/usr/bin/perl` qui le charg
 1. Framework et script présents dans l'app → **adaptateur** (« Now Playing de macOS » dans les réglages).
 2. Sinon, ou après deux arrêts de l'adaptateur en moins de 10 s → **repli AppleScript** :
    - lecture des notifications distribuées `com.spotify.client.PlaybackStateChanged` et `com.apple.Music.playerInfo` (sans autorisation) ;
+   - au démarrage, lecture de l'état des lecteurs déjà ouverts par AppleScript, **seulement si l'autorisation Automatisation est déjà accordée** (vérifiée sans afficher de demande) ;
    - commandes par AppleScript, uniquement vers une app déjà ouverte (autorisation Automatisation au premier clic) ;
-   - limites : état connu seulement à la prochaine notification (lecture, pause, changement de piste), pas de pochette, pas de position pour Musique, vidéos des navigateurs non détectées.
+   - limites : sans autorisation, état connu seulement à la prochaine notification (lecture, pause, changement de piste) ; pas de pochette ; vidéos des navigateurs non détectées.
+
+### 7.4 Cycle de vie du processus
+
+L'adaptateur est un processus enfant de l'app. Si l'app est tuée sans se terminer (plantage, arrêt depuis Xcode), il est rattaché à `launchd` et ne s'arrête qu'à sa prochaine écriture. Au démarrage, l'app supprime donc les adaptateurs orphelins lancés depuis sa propre copie (`pkill -P 1 -f <chemin du script>`). Quand l'app sert d'hôte aux tests unitaires, elle ne démarre ni l'Island ni l'adaptateur.
 
 > Le projet indique que son API peut changer entre versions mineures : ne changer de tag (`git -C Vendor/mediaremote-adapter checkout <tag>`) qu'après avoir refait les tests ci-dessus.
 
@@ -329,7 +343,9 @@ Tout le code embarqué (dont `MediaRemoteAdapter.framework`) doit être signé a
 | `Cannot code sign because the target does not have an Info.plist` (tests) | `GENERATE_INFOPLIST_FILE` absent de la cible de tests | Vérifier la cible `LetsWorkTests` dans `project.yml` |
 | Dates affichées en anglais | Langue de développement non déclarée | `developmentLanguage: fr` dans `project.yml`, puis `make project` |
 | Réglages › Médias indique « Repli AppleScript » | Adaptateur non compilé ou en échec | `make adapter`, recompiler ; sinon tester l'adaptateur (section 7.1) |
-| En repli, rien ne s'affiche alors que Spotify joue déjà | L'état n'arrive qu'avec la prochaine notification | Mettre en pause puis relancer la lecture, ou compiler l'adaptateur |
+| En repli, rien ne s'affiche alors que Spotify joue déjà | Autorisation Automatisation pas encore accordée : l'état n'arrive qu'avec la prochaine notification | Cliquer une fois sur un contrôle de lecture pour accorder l'autorisation, ou compiler l'adaptateur |
+| Après un relancement, l'Island n'affiche plus la lecture | Une copie périmée de l'app a été ouverte (Spotlight, Finder, autre dossier de build) | `make run`, ou ⌘R dans Xcode ; vérifier le chemin avec `pgrep -lf LetsWork.app` |
+| Plusieurs processus `mediaremote-adapter.pl` | Adaptateurs orphelins d'une instance tuée | Supprimés au prochain lancement de l'app (section 7.4) |
 | En repli, les boutons de lecture n'ont aucun effet | Autorisation Automatisation refusée | Réglages Système › Confidentialité et sécurité › Automatisation |
 | `cmake` échoue sur des fichiers manquants | Sous-modules de l'adaptateur absents | `git submodule update --init --recursive` |
 | Test de l'adaptateur ≠ 0 | Chemins relatifs, ou macOS a de nouveau restreint MediaRemote | Utiliser des chemins absolus ; consulter les issues du projet ; s'appuyer sur le repli AppleScript |

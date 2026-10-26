@@ -8,6 +8,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var settingsController = SettingsWindowController(media: media)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // L'app sert d'hôte aux tests unitaires : ni Island ni adaptateur, qui survivrait à l'arrêt des tests.
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
         let controller = IslandWindowController(media: media)
         coordinator = ActivityCoordinator(island: controller.model, media: media)
         controller.show()

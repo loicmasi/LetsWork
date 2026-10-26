@@ -31,6 +31,16 @@ final class MediaRemoteAdapterSource: NowPlayingSource {
         self.paths = paths
     }
 
+    /// Un adaptateur survit à l'app si elle est tuée sans se terminer (plantage, arrêt depuis Xcode) :
+    /// rattaché à launchd, il ne s'arrête qu'à sa prochaine écriture. On nettoie ceux de cette copie de l'app.
+    static func terminateOrphans(paths: AdapterPaths) {
+        let pkill = Process()
+        pkill.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
+        pkill.arguments = ["-P", "1", "-f", paths.script.path]
+        try? pkill.run()
+        pkill.waitUntilExit()
+    }
+
     func updates() -> AsyncThrowingStream<NowPlaying?, any Error> {
         let adapter = AdapterProcess(
             paths: paths,

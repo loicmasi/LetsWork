@@ -125,6 +125,28 @@ struct AppleScriptSourceTests {
         #expect(!nowPlaying.isPlaying)
     }
 
+    @Test func parsesAppleScriptStateQuery() throws {
+        let result = NSAppleEventDescriptor.list()
+        result.insert(NSAppleEventDescriptor(string: "playing"), at: 0)
+        result.insert(NSAppleEventDescriptor(string: "Song"), at: 0)
+        result.insert(NSAppleEventDescriptor(string: "Band"), at: 0)
+        result.insert(NSAppleEventDescriptor(string: ""), at: 0)
+        result.insert(NSAppleEventDescriptor(double: 215_000), at: 0)
+        result.insert(NSAppleEventDescriptor(double: 42.5), at: 0)
+        let nowPlaying = try #require(AppleScriptSource.nowPlaying(fromScriptResult: result, player: .spotify, at: now))
+        #expect(nowPlaying.title == "Song")
+        #expect(nowPlaying.album == nil)
+        #expect(nowPlaying.duration == 215)
+        #expect(nowPlaying.elapsedTime == 42.5)
+        #expect(nowPlaying.isPlaying)
+    }
+
+    @Test func stoppedScriptResultHasNothingPlaying() {
+        let result = NSAppleEventDescriptor.list()
+        result.insert(NSAppleEventDescriptor(string: "stopped"), at: 0)
+        #expect(AppleScriptSource.nowPlaying(fromScriptResult: result, player: .music, at: now) == nil)
+    }
+
     @Test func stoppedPlayerHasNothingPlaying() {
         let userInfo: [AnyHashable: Any] = ["Player State": "Stopped", "Name": "Song"]
         #expect(AppleScriptSource.nowPlaying(from: userInfo, player: .music, at: now) == nil)

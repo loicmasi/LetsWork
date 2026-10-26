@@ -134,7 +134,7 @@ Voir et piloter **ce qui joue sur le Mac**, quelle que soit la source : applicat
 
 ### Limites connues (M1)
 
-- **Repli AppleScript** : l'état de Spotify ou de Musique n'est connu qu'à leur prochaine notification (lecture, pause, changement de piste) ; pas de pochette ; pas de position de lecture pour Musique ; vidéos des navigateurs non détectées.
+- **Repli AppleScript** : sans autorisation Automatisation déjà accordée, l'état de Spotify ou de Musique n'est connu qu'à leur prochaine notification (lecture, pause, changement de piste) ; pas de pochette ; vidéos des navigateurs non détectées.
 - **Aperçu de changement de piste** : le titre est tronqué, pas encore défilant.
 - **Égaliseur** : animation décorative, sans lien avec le signal audio (voir évolutions).
 
@@ -287,7 +287,7 @@ Toutes les sources implémentent une même interface `CalendarProvider` ; un agr
 | Jalon | Contenu | Livrable vérifiable | Statut |
 |---|---|---|---|
 | **M0 — Socle** | Fenêtre Island, ancrage sur l'encoche, états fermé/compact/étendu, survol, icône de barre de menus, réglages vides, lancement à l'ouverture de session. | L'Island s'ouvre au survol, au-dessus d'une app plein écran. | Fait |
-| **M1 — Médias** | Intégration de mediaremote-adapter, modèle « Now Playing », vues compact/aperçu/étendu, contrôles, repli AppleScript. | Critères d'acceptation F1. | Codé ; validation avec l'adaptateur compilé et une vraie lecture à faire |
+| **M1 — Médias** | Intégration de mediaremote-adapter, modèle « Now Playing », vues compact/aperçu/étendu, contrôles, repli AppleScript. | Critères d'acceptation F1. | Validé avec Spotify (adaptateur et repli) ; vidéo dans un navigateur et Apple Music à vérifier |
 | **M2 — HUD** | Spike touches/HUD natif, event tap, Core Audio, DisplayServices, vue HUD, assistant d'autorisation Accessibilité. | Critères d'acceptation F2. | À faire |
 | **M3 — Calendrier** | EventKit, vues, alertes, détection de visio ; puis fournisseurs Google et Microsoft Graph. | Critères d'acceptation F3. | À faire |
 | **M4 — Finition** | Assistant de premier lancement, localisation, accessibilité, signature Developer ID, notarisation, mises à jour (Sparkle). | DMG notarisé installable sur un autre Mac. | À faire |

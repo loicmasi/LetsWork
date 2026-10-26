@@ -31,6 +31,22 @@ final class AppleScriptSource: NowPlayingSource {
             case .spotify: Notification.Name("com.spotify.client.PlaybackStateChanged")
             }
         }
+
+        /// Renvoie {état} si arrêté, sinon {état, titre, artiste, album, durée en ms, position en s}.
+        var stateScript: String {
+            let durationMillis = switch self {
+            case .music: "(duration of t) * 1000"
+            case .spotify: "duration of t"
+            }
+            return """
+                tell application "\(applicationName)"
+                    set playerState to player state as string
+                    if playerState is "stopped" then return {playerState}
+                    set t to current track
+                    return {playerState, name of t, artist of t, album of t, (\(durationMillis)) as real, player position as real}
+                end tell
+                """
+        }
     }
 
     let kind = MediaSourceKind.appleScript
@@ -96,6 +112,20 @@ final class AppleScriptSource: NowPlayingSource {
         )
     }
 
+    /// Résultat de `Player.stateScript`, converti au format des notifications.
+    nonisolated static func nowPlaying(fromScriptResult result: NSAppleEventDescriptor, player: Player, at date: Date) -> NowPlaying? {
+        guard result.numberOfItems >= 6 else { return nil }
+        let userInfo: [AnyHashable: Any] = [
+            "Player State": result.atIndex(1)?.stringValue?.capitalized ?? "",
+            "Name": result.atIndex(2)?.stringValue ?? "",
+            "Artist": result.atIndex(3)?.stringValue ?? "",
+            "Album": result.atIndex(4)?.stringValue ?? "",
+            "Duration": result.atIndex(5)?.doubleValue ?? 0,
+            "Playback Position": result.atIndex(6)?.doubleValue ?? 0,
+        ]
+        return nowPlaying(from: userInfo, player: player, at: date)
+    }
+
     private func startObserving() {
         let center = DistributedNotificationCenter.default()
         for player in Player.allCases {
@@ -107,6 +137,34 @@ final class AppleScriptSource: NowPlayingSource {
             }
             observers.append(observer)
         }
+        // Les notifications n'arrivent qu'au prochain changement : lire l'état des lecteurs déjà ouverts.
+        for player in Player.allCases {
+            if let state = currentState(of: player) {
+                update(player, with: state)
+            }
+        }
+    }
+
+    /// Ne déclenche jamais la demande d'autorisation : sans accord préalable, on attend les notifications.
+    private func currentState(of player: Player) -> NowPlaying? {
+        guard isRunning(player) else { return nil }
+        let target = NSAppleEventDescriptor(bundleIdentifier: player.bundleIdentifier)
+        let permission = AEDeterminePermissionToAutomateTarget(
+            target.aeDesc,
+            AEEventClass(typeWildCard),
+            AEEventID(typeWildCard),
+            false
+        )
+        guard permission == noErr else { return nil }
+        var error: NSDictionary?
+        guard let result = NSAppleScript(source: player.stateScript)?.executeAndReturnError(&error), error == nil else {
+            return nil
+        }
+        return Self.nowPlaying(fromScriptResult: result, player: player, at: .now)
+    }
+
+    private func isRunning(_ player: Player) -> Bool {
+        !NSRunningApplication.runningApplications(withBundleIdentifier: player.bundleIdentifier).isEmpty
     }
 
     private func stopObserving() {
@@ -128,7 +186,7 @@ final class AppleScriptSource: NowPlayingSource {
 
     private func run(_ source: String, on player: Player) {
         // `tell application` lancerait l'app si elle était fermée.
-        guard !NSRunningApplication.runningApplications(withBundleIdentifier: player.bundleIdentifier).isEmpty else { return }
+        guard isRunning(player) else { return }
         var error: NSDictionary?
         NSAppleScript(source: source)?.executeAndReturnError(&error)
         if let error {

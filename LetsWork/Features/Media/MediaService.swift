@@ -36,6 +36,7 @@ final class MediaService {
     func start() {
         guard status == .stopped else { return }
         if let paths = AdapterPaths.bundled() {
+            MediaRemoteAdapterSource.terminateOrphans(paths: paths)
             use(MediaRemoteAdapterSource(paths: paths), status: .adapter)
         } else {
             logger.notice("MediaRemoteAdapter.framework absent : repli AppleScript")
