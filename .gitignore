@@ -1,0 +1,12 @@
+# Projet Xcode : régénéré depuis project.yml
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+build/
+
+# Dépendances compilées localement
+Vendor/build/
+
+# macOS
+.DS_Store

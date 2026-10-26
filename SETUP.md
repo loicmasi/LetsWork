@@ -1,0 +1,327 @@
+# LetsWork — Mise en place du projet
+
+Ce document explique comment installer, compiler et faire évoluer le projet LetsWork.
+Les fonctionnalités à développer sont décrites dans [FEATURES.md](FEATURES.md).
+
+---
+
+## Sommaire
+
+1. [Choix techniques](#1-choix-techniques)
+2. [Prérequis](#2-prérequis)
+3. [Installer les outils](#3-installer-les-outils)
+4. [Première installation](#4-première-installation)
+5. [Le projet Xcode (project.yml)](#5-le-projet-xcode-projectyml)
+6. [Commandes du Makefile](#6-commandes-du-makefile)
+7. [Intégrer mediaremote-adapter (M1)](#7-intégrer-mediaremote-adapter-m1)
+8. [Autorisations et signature pendant le développement](#8-autorisations-et-signature-pendant-le-développement)
+9. [Architecture et conventions](#9-architecture-et-conventions)
+10. [Distribution](#10-distribution)
+11. [Dépannage](#11-dépannage)
+
+---
+
+## 1. Choix techniques
+
+| Sujet | Choix | Raison |
+|---|---|---|
+| Langage | **Swift 6** (mode de langage 6, concurrence stricte) | Natif, sûr, sans dépendance d'exécution. |
+| Interface | **SwiftUI** pour les vues, **AppKit** pour la fenêtre (`NSPanel`) | SwiftUI ne sait pas créer une fenêtre sans bordure au-dessus de la barre de menus ; AppKit si. |
+| État | `@Observable` (framework Observation) | Simple, performant, natif depuis macOS 14. |
+| Cible minimale | **macOS 14 Sonoma** | `@Observable`, accès complet EventKit (`requestFullAccessToEvents`), `NSApp.activate()`, `SMAppService`. |
+| Langue de développement | **Français** (`developmentLanguage: fr`) | Les textes source sont en français ; dates et heures formatées en français. L'anglais viendra au jalon M4. |
+| Projet Xcode | **XcodeGen** (`project.yml` → `.xcodeproj` généré, non versionné) | Projet décrit en texte, lisible, sans conflits de merge sur le `.pbxproj`. |
+| Sandbox | **Désactivée** | Un event tap qui absorbe les touches (F2) et le lancement de `/usr/bin/perl` (F1) sont incompatibles avec la sandbox. |
+| Distribution | **Developer ID + notarisation**, hors Mac App Store | Imposé par les API privées (MediaRemote, DisplayServices) et l'absence de sandbox. |
+| Médias | [mediaremote-adapter](https://github.com/ungive/mediaremote-adapter) (BSD-3-Clause), sous-module git épinglé sur `v0.7.7` | Seul moyen fiable de lire le « Now Playing » depuis macOS 15.4. |
+| Tests | **Swift Testing** (`import Testing`) | Framework de test actuel d'Apple. |
+
+---
+
+## 2. Prérequis
+
+| Outil | Version | Sur ce Mac (26/10/2026) |
+|---|---|---|
+| macOS | 14 ou plus récent | 27.0.1 ✅ |
+| Xcode | 26 ou plus récent | 27.1 (Swift 6.4) ✅ |
+| Homebrew | — | installé ✅ |
+| XcodeGen | dernière version | 2.46.0 ✅ |
+| CMake | ≥ 3.20 (requis à partir de M1) | 4.4.4 ✅ |
+| Certificat Apple Development | requis à partir de M2 (voir section 8) | **aucun installé** |
+| Compte Apple Developer | gratuit pour le développement, payant (99 $/an) pour distribuer avec Developer ID | à vérifier |
+
+Un **MacBook Pro avec encoche** est nécessaire pour valider le rendu de l'Island ; sur un écran sans encoche, l'Island est simulée (voir FEATURES.md, F0).
+
+---
+
+## 3. Installer les outils
+
+```bash
+brew install xcodegen cmake
+```
+
+Puis vérifier :
+
+```bash
+xcodegen --version && cmake --version
+```
+
+---
+
+## 4. Première installation
+
+Après un `git clone`, récupérer l'adaptateur média et ses propres sous-modules :
+
+```bash
+git submodule update --init --recursive
+```
+
+Générer le projet Xcode depuis `project.yml` :
+
+```bash
+make bootstrap
+```
+
+Ouvrir dans Xcode, puis lancer avec ⌘R :
+
+```bash
+make open
+```
+
+**Résultat attendu (M0)** :
+
+- l'Island fermée est invisible, confondue avec l'encoche ;
+- au survol de l'encoche, elle se déploie (date, heure, « Aucune activité pour le moment ») et se referme quand la souris s'éloigne ;
+- un clic sur l'Island la garde ouverte ; un clic ailleurs la referme ;
+- une icône en forme de capsule apparaît dans la barre de menus, avec **Réglages…**, **Simuler une activité (état compact)** (builds Debug uniquement) et **Quitter** ;
+- aucune icône dans le Dock.
+
+---
+
+## 5. Le projet Xcode (`project.yml`)
+
+`project.yml` est la **seule source de vérité** du projet : le `.xcodeproj` est régénéré par `make project` et ignoré par git. `Config/Info.plist` et `Config/LetsWork.entitlements` sont eux aussi générés à partir de ce fichier : toute modification se fait dans `project.yml`.
+
+| Réglage | Valeur | Remarque |
+|---|---|---|
+| `bundleIdPrefix` / `PRODUCT_BUNDLE_IDENTIFIER` | `dev.projects` / `dev.projects.letswork` | |
+| `developmentLanguage` | `fr` | |
+| `deploymentTarget` | macOS 14.0 | |
+| `SWIFT_VERSION` | 6.0 | mode de langage Swift 6 |
+| `CODE_SIGN_IDENTITY` | `-` (signature locale ad hoc) | à remplacer avant M2, voir section 8 |
+| `DEVELOPMENT_TEAM` | vide | à renseigner avant M2 |
+| `ENABLE_HARDENED_RUNTIME` | YES | requis pour la notarisation |
+| `LSUIElement` | true | pas d'icône dans le Dock |
+| `NSCalendarsFullAccessUsageDescription`, `NSAppleEventsUsageDescription` | textes en français | affichés dans les invites système (F3, F1) |
+| Entitlements | `automation.apple-events`, `personal-information.calendars`, pas de sandbox | |
+| Cible de tests `LetsWorkTests` | `bundle.unit-test`, `GENERATE_INFOPLIST_FILE: YES` | hébergée par l'app |
+
+> **Sans XcodeGen** : créer le projet dans Xcode (Fichier › Nouveau › Projet › macOS › App, interface SwiftUI) et reporter à la main les réglages ci-dessus, puis y ajouter les dossiers `LetsWork/` et `LetsWorkTests/`.
+
+---
+
+## 6. Commandes du Makefile
+
+| Commande | Effet |
+|---|---|
+| `make bootstrap` | Première installation. En M0 : génère le projet. À partir de M1 : compile aussi l'adaptateur média. |
+| `make project` | Régénère `LetsWork.xcodeproj` depuis `project.yml`. |
+| `make open` | Régénère puis ouvre le projet dans Xcode. |
+| `make build` | Compile la configuration Debug en ligne de commande. |
+| `make test` | Lance les tests unitaires. |
+| `make adapter` | Compile `MediaRemoteAdapter.framework` dans `Vendor/build/` (M1). |
+
+---
+
+## 7. Intégrer mediaremote-adapter (M1)
+
+Depuis macOS 15.4, une application ne peut plus lire directement le framework privé MediaRemote. L'adaptateur fait exécuter un petit framework par `/usr/bin/perl` (binaire système autorisé) et diffuse les infos de lecture en JSON.
+
+**État actuel** : le sous-module `Vendor/mediaremote-adapter` est ajouté et épinglé sur `v0.7.7`, et le script `scripts/build-mediaremote-adapter.sh` est en place. Le framework n'a **pas encore été compilé** et n'est pas encore référencé par `project.yml`.
+
+### 7.1 Compiler et tester l'adaptateur
+
+```bash
+make adapter
+```
+
+Test rapide (les chemins doivent être **absolus** ; code de sortie `0` = l'adaptateur fonctionne sur ce Mac) :
+
+```bash
+/usr/bin/perl "$PWD/Vendor/mediaremote-adapter/bin/mediaremote-adapter.pl" "$PWD/Vendor/build/MediaRemoteAdapter.framework" test; echo "exit=$?"
+```
+
+Lancer une musique ou une vidéo YouTube, puis :
+
+```bash
+/usr/bin/perl "$PWD/Vendor/mediaremote-adapter/bin/mediaremote-adapter.pl" "$PWD/Vendor/build/MediaRemoteAdapter.framework" get --no-artwork
+```
+
+On doit obtenir un JSON avec notamment `bundleIdentifier`, `playing`, `title`, `artist`, `duration`, `elapsedTime`.
+
+### 7.2 Embarquer l'adaptateur dans l'app
+
+LetsWork embarque :
+
+- `MediaRemoteAdapter.framework` → dans `LetsWork.app/Contents/Frameworks/` (signé à la copie, **non lié** à l'app) ;
+- `mediaremote-adapter.pl` → dans `LetsWork.app/Contents/Resources/`.
+
+Ajouter à la cible `LetsWork` de `project.yml` :
+
+```yaml
+    sources:
+      - path: LetsWork
+      - path: Vendor/mediaremote-adapter/bin/mediaremote-adapter.pl
+        buildPhase: resources
+    dependencies:
+      # Embarqué et signé, mais jamais lié : c'est /usr/bin/perl qui le charge.
+      - framework: Vendor/build/MediaRemoteAdapter.framework
+        embed: true
+        link: false
+        codeSign: true
+```
+
+Puis faire dépendre `bootstrap` de `adapter` dans le `Makefile` (`bootstrap: adapter project`).
+
+> Le projet indique que son API peut changer entre versions mineures : ne changer de tag (`git -C Vendor/mediaremote-adapter checkout <tag>`) qu'après avoir refait les tests ci-dessus.
+
+---
+
+## 8. Autorisations et signature pendant le développement
+
+| Autorisation | Fonctionnalité | Où l'accorder |
+|---|---|---|
+| Accessibilité | F2 (event tap) | Réglages Système › Confidentialité et sécurité › Accessibilité |
+| Calendriers (accès complet) | F3 | Invite système au premier accès, puis › Calendriers |
+| Automatisation (Musique, Spotify) | F1, canal de repli | Invite système au premier Apple Event, puis › Automatisation |
+
+M0 ne demande aucune autorisation.
+
+**Signature stable — à faire avant M2** : macOS associe les autorisations à la signature de l'app. Le projet est actuellement signé en local (ad hoc, `CODE_SIGN_IDENTITY: "-"`) car aucun certificat n'est installé sur ce Mac. Avec cette signature, l'autorisation Accessibilité serait perdue à chaque build. Avant M2 :
+
+1. Xcode › Réglages › Comptes : ajouter un identifiant Apple (l'équipe personnelle gratuite suffit) et créer un certificat **Apple Development**.
+2. Dans `project.yml` : renseigner `DEVELOPMENT_TEAM` et supprimer la ligne `CODE_SIGN_IDENTITY: "-"`.
+3. `make project`.
+
+Réinitialiser une autorisation pour retester le parcours de premier lancement :
+
+```bash
+tccutil reset Accessibility dev.projects.letswork
+```
+
+```bash
+tccutil reset Calendar dev.projects.letswork
+```
+
+```bash
+tccutil reset AppleEvents dev.projects.letswork
+```
+
+---
+
+## 9. Architecture et conventions
+
+### Arborescence
+
+```text
+LetsWork/
+├── FEATURES.md                         spécification fonctionnelle
+├── SETUP.md                            ce document
+├── Makefile
+├── project.yml                         source de vérité du projet Xcode
+├── Config/                             Info.plist et entitlements (générés par XcodeGen)
+├── LetsWork/
+│   ├── App/
+│   │   ├── LetsWorkApp.swift           point d'entrée, icône et menu de la barre de menus
+│   │   ├── AppDelegate.swift           crée l'Island et la fenêtre de réglages
+│   │   └── LaunchAtLogin.swift         ouverture de session (SMAppService)
+│   ├── Island/
+│   │   ├── NotchGeometry.swift         taille de l'encoche, ou encoche simulée
+│   │   ├── IslandState.swift           états fermé / compact / étendu et règle de résolution
+│   │   ├── IslandMetrics.swift         dimensions par état, zone de survol
+│   │   ├── IslandModel.swift           @Observable : délais de survol, épinglage, activité
+│   │   ├── IslandPanel.swift           NSPanel + vue conteneur (suivi de la souris, premier clic)
+│   │   ├── IslandWindowController.swift  écran cible, clics traversants, moniteurs d'événements
+│   │   ├── NotchShape.swift            forme animable de l'Island
+│   │   └── IslandView.swift            vue SwiftUI et contenus provisoires
+│   ├── Settings/
+│   │   ├── AppSettings.swift           clés UserDefaults, écran d'affichage
+│   │   ├── SettingsView.swift          formulaire de réglages
+│   │   └── SettingsWindowController.swift
+│   ├── Features/                       (à venir) Media/, HUD/, Calendar/
+│   └── System/                         (à venir) Permissions/, Private/
+├── LetsWorkTests/
+│   └── IslandTests.swift
+├── Vendor/
+│   ├── mediaremote-adapter/            sous-module git (v0.7.7)
+│   └── build/                          framework compilé (ignoré par git)
+└── scripts/
+    └── build-mediaremote-adapter.sh
+```
+
+### Fonctionnement de l'Island (M0)
+
+- La fenêtre (`IslandPanel`) est une zone transparente fixe de 640 × 240 pt, centrée en haut de l'écran ; la forme s'anime à l'intérieur.
+- La fenêtre **ignore la souris par défaut** : les clics passent vers la barre de menus et les fenêtres situées dessous.
+- Un moniteur global de mouvements de souris détecte l'entrée dans la zone de l'Island (`IslandMetrics.hitZone`). La fenêtre se met alors à capter la souris, et une zone de suivi (`NSTrackingArea`, `.activeAlways`) prend le relais tant que la souris est dessus.
+- `IslandModel` applique les délais : 150 ms avant d'ouvrir, 250 ms avant de refermer. Un clic épingle l'Island ; un clic ailleurs (moniteur global) retire l'épinglage.
+- La fenêtre est repositionnée quand les écrans changent et quand le réglage « Afficher sur » change.
+
+### Flux de données (cible)
+
+```text
+Sources (adaptateur média, Core Audio, touches, EventKit…)
+        │  événements
+        ▼
+Services de fonctionnalité (@Observable, un par feature, derrière un protocole)
+        │  activités
+        ▼
+ActivityCoordinator (@MainActor) — applique la priorité définie dans FEATURES.md › F0
+        │  état de l'Island (fermé / compact / étendu / HUD + contenu)
+        ▼
+IslandModel → IslandView (SwiftUI) — animations
+```
+
+En M0, l'activité est simulée depuis le menu (`Simuler une activité`) ; le coordinateur arrive avec la première vraie activité (M1).
+
+### Conventions
+
+- **Concurrence** : mode Swift 6 strict. Tout ce qui touche l'interface et l'état de l'Island est `@MainActor`. Les flux externes (sortie de l'adaptateur, callbacks Core Audio, event tap) sont convertis en `AsyncStream` puis consommés sur le main actor.
+- **Logique pure séparée d'AppKit** (`NotchGeometry.compute`, `IslandState.resolve`, `IslandMetrics`) pour être testée sans fenêtre.
+- **Une source = un protocole** (`NowPlayingSource`, `CalendarProvider`…). On peut ainsi remplacer une source cassée par une mise à jour de macOS, et tester avec des doublures.
+- **API privées isolées** dans `System/Private/`, chargées par `dlopen` / `dlsym`, jamais liées. Si un symbole est absent, l'initialiseur renvoie `nil` et la fonctionnalité se désactive proprement.
+- **Adaptateur média** : lancé avec `Process` (`/usr/bin/perl`, arguments : chemin absolu du `.pl` via `Bundle.main.url(forResource:withExtension:)`, chemin absolu du framework via `Bundle.main.privateFrameworksURL`, puis `stream`). Lire `stdout` ligne par ligne, décoder chaque ligne JSON, relancer le processus s'il se termine.
+- **Journalisation** : `os.Logger(subsystem: "dev.projects.letswork", category: "<feature>")`.
+- **Tests** : Swift Testing sur la logique pure — états de l'Island, géométrie, arbitrage des activités, dédoublonnage des événements, interpolation de la position de lecture, décodage du JSON de l'adaptateur, détection des liens de visio.
+- **Secrets** : jetons OAuth uniquement dans le Trousseau ; identifiants clients OAuth hors du dépôt (fichier `.xcconfig` local ignoré par git).
+
+---
+
+## 10. Distribution
+
+À traiter au jalon M4 :
+
+1. Certificat **Developer ID Application** (compte Apple Developer payant).
+2. Archive : Xcode › Product › Archive, puis « Distribute App » › Developer ID ; ou `xcodebuild archive` + `xcodebuild -exportArchive`.
+3. Notarisation : `xcrun notarytool submit LetsWork.zip --keychain-profile <profil> --wait`, puis `xcrun stapler staple LetsWork.app`.
+4. Paquet : DMG (ex. `create-dmg`), mises à jour automatiques avec **Sparkle**.
+
+Tout le code embarqué (dont `MediaRemoteAdapter.framework`) doit être signé avec le hardened runtime : c'est ce que fait `codeSign: true` dans `project.yml`.
+
+---
+
+## 11. Dépannage
+
+| Symptôme | Cause probable | Solution |
+|---|---|---|
+| `xcodegen: command not found` | Outil non installé | `brew install xcodegen` |
+| `Cannot code sign because the target does not have an Info.plist` (tests) | `GENERATE_INFOPLIST_FILE` absent de la cible de tests | Vérifier la cible `LetsWorkTests` dans `project.yml` |
+| Dates affichées en anglais | Langue de développement non déclarée | `developmentLanguage: fr` dans `project.yml`, puis `make project` |
+| Build : `MediaRemoteAdapter.framework` introuvable (M1) | Adaptateur non compilé | `make adapter` |
+| `cmake` échoue sur des fichiers manquants | Sous-modules de l'adaptateur absents | `git submodule update --init --recursive` |
+| Test de l'adaptateur ≠ 0 | Chemins relatifs, ou macOS a de nouveau restreint MediaRemote | Utiliser des chemins absolus ; consulter les issues du projet ; s'appuyer sur le repli AppleScript |
+| L'Island apparaît sous la barre de menus | Niveau de fenêtre trop bas | Vérifier `level` dans `IslandPanel` |
+| L'Island disparaît en plein écran ou en changeant de Space | `collectionBehavior` incomplet | `.canJoinAllSpaces` + `.fullScreenAuxiliary` |
+| Les clics sur la barre de menus près de l'encoche ne passent plus | La fenêtre capte la souris hors de l'Island | Vérifier `ignoresMouseEvents` dans `IslandWindowController.handleMouse` |
+| L'autorisation Accessibilité est perdue à chaque build | Signature ad hoc | Signer avec un certificat Apple Development (section 8) |
+| L'app apparaît dans le Dock | `LSUIElement` absent | Vérifier `info.properties` dans `project.yml`, puis `make project` |

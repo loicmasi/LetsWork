@@ -1,0 +1,61 @@
+name: LetsWork
+
+options:
+  bundleIdPrefix: dev.projects
+  developmentLanguage: fr
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # Signature locale (ad hoc) tant qu'aucun certificat Apple Development n'est installé.
+    # Avant M2 (autorisation Accessibilité) : renseigner DEVELOPMENT_TEAM et retirer CODE_SIGN_IDENTITY.
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_IDENTITY: "-"
+    DEVELOPMENT_TEAM: ""
+    ENABLE_HARDENED_RUNTIME: YES
+    DEAD_CODE_STRIPPING: YES
+
+targets:
+  LetsWork:
+    type: application
+    platform: macOS
+    sources:
+      - path: LetsWork
+    info:
+      path: Config/Info.plist
+      properties:
+        CFBundleDisplayName: LetsWork
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.productivity
+        LSUIElement: true   # pas d'icône dans le Dock
+        NSCalendarsFullAccessUsageDescription: "LetsWork affiche vos prochains événements dans l'Island."
+        NSAppleEventsUsageDescription: "LetsWork pilote la lecture de Musique et Spotify depuis l'Island."
+    entitlements:
+      path: Config/LetsWork.entitlements
+      properties:
+        # Pas de com.apple.security.app-sandbox : application non sandboxée.
+        com.apple.security.automation.apple-events: true
+        com.apple.security.personal-information.calendars: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.projects.letswork
+    scheme:
+      testTargets:
+        - LetsWorkTests
+
+  LetsWorkTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: LetsWorkTests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: LetsWork
