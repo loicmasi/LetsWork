@@ -269,7 +269,7 @@ LetsWork/
 │   │   ├── IslandState.swift           états fermé / compact / aperçu / étendu et règle de résolution
 │   │   ├── IslandMetrics.swift         dimensions par état, zone de survol
 │   │   ├── IslandModel.swift           @Observable : délais de survol, épinglage, activité, onglet
-│   │   ├── IslandTab.swift             onglets de l'état étendu (Accueil, Multimédia, Calendrier, Morpion)
+│   │   ├── IslandTab.swift             onglets de l'état étendu (Accueil, Multimédia, Calendrier, Jeux)
 │   │   ├── ExpandedIslandView.swift    barre d'onglets et page d'accueil
 │   │   ├── IslandPanel.swift           NSPanel + vue conteneur (suivi de la souris, premier clic)
 │   │   ├── IslandWindowController.swift  écran cible, clics traversants, moniteurs d'événements
@@ -310,9 +310,13 @@ LetsWork/
 │   │   │   ├── NotificationService.swift  @Observable : accès, nouvelles notifications
 │   │   │   └── NotificationPopupView.swift  pop-up au style de l'aperçu de piste
 │   │   └── Game/
+│   │       ├── GamesView.swift         onglet Jeux et sélecteur Morpion / Glouton
 │   │       ├── TicTacToe.swift         plateau, victoire, bot (minimax et niveaux)
 │   │       ├── TicTacToeGame.swift     @Observable : tours, score, niveau, premier joueur
-│   │       └── TicTacToeView.swift     onglet Morpion
+│   │       ├── TicTacToeView.swift     Morpion
+│   │       ├── MazeGame.swift          Glouton : labyrinthe, déplacements, fantômes, vies, niveaux
+│   │       ├── MazeGameController.swift  @Observable : boucle de jeu, touches, pause, record
+│   │       └── MazeGameView.swift      Glouton : plateau et panneau latéral
 │   └── System/
 │       ├── Permissions/
 │       │   └── AccessibilityPermission.swift
@@ -360,6 +364,7 @@ IslandModel → IslandView (SwiftUI) — animations
 - **HUD** : `MediaKeyTap` (event tap de session, en tête de file) reçoit les événements système `NX_KEYTYPE_*` et les touches 144/145. `HUDService` applique le changement (Core Audio ou DisplayServices), absorbe l'événement pour que macOS n'affiche pas son indicateur, puis `HUDService.onShow` prévient `ActivityCoordinator`, qui affiche l'état `.hud` pendant 1,5 s après la dernière pression. ⌥ seul laisse passer la touche (macOS ouvre le réglage) ; ⌥⇧ règle par pas de 1/64.
 - **Calendrier** : `EventKitProvider` lit les comptes macOS ; `CalendarService` fusionne et filtre les événements d'aujourd'hui à J+7, recalcule l'événement du compact et les alertes au prochain instant utile (début de la fenêtre d'une heure, alerte, début, fin), puis prévient `ActivityCoordinator` (`onUpcomingChange`, `onAlert`). Activité de fond : la lecture si elle est active, sinon la réunion. L'alerte reste 10 s, sauf clic. Rechargement sur `EKEventStoreChanged`, changement de jour et sortie de veille.
 - **Notifications** : `FileChangeWatcher` (kqueue, sur le dossier, `db` et `db-wal` ; FSEvents ne remonte rien pour ce dossier protégé) signale une écriture dans la base, avec une vérification de secours toutes les 10 s ; `NotificationService` lit les enregistrements plus récents que le dernier vu, les décode et prévient `ActivityCoordinator` (`onNotification`), qui affiche l'état `.notification` 5 s et met les suivantes en file.
+- **Clavier pendant une partie** : `IslandPanel` ne peut devenir fenêtre clé que si `acceptsKeyboardFocus` est vrai. Pendant une partie de Glouton, `IslandModel` le demande à `IslandWindowController` (`onKeyboardFocusChange`), qui rend ensuite le clavier à l'app au premier plan. Les touches passent par `IslandPanel.sendEvent` puis `IslandModel.handleKey` ; les raccourcis avec ⌘ ne sont pas interceptés.
 
 ### Conventions
 

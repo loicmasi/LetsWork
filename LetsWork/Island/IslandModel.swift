@@ -16,17 +16,25 @@ final class IslandModel {
     private(set) var notification: SystemNotification?
     /// Page affichée à l'état étendu ; conservée d'une ouverture à l'autre.
     private(set) var selectedTab: IslandTab = .home
-    /// Partie de morpion de l'onglet du même nom, conservée quand l'Island se referme.
+    /// Jeu affiché dans l'onglet Jeux.
+    private(set) var selectedGame: GameKind = .ticTacToe
+    /// Parties de l'onglet Jeux, conservées quand l'Island se referme.
     let game = TicTacToeGame()
+    let maze = MazeGameController()
 
     /// Clic sur la notification affichée : le coordinateur la masque et passe à la suivante.
     @ObservationIgnored var onNotificationTap: (() -> Void)?
+    /// Une partie de Glouton prend (vrai) ou rend (faux) le clavier ; branché par IslandWindowController.
+    @ObservationIgnored var onKeyboardFocusChange: ((Bool) -> Void)?
 
     @ObservationIgnored private var inputs = IslandInputs()
     @ObservationIgnored private var pendingTransition: Task<Void, Never>?
 
     init(metrics: IslandMetrics) {
         self.metrics = metrics
+        maze.onEngagementChange = { [weak self] engaged in
+            self?.mazeEngagementDidChange(engaged)
+        }
     }
 
     func updateMetrics(_ metrics: IslandMetrics) {
@@ -42,11 +50,15 @@ final class IslandModel {
 
     func togglePinned() {
         inputs.isPinned.toggle()
+        if !inputs.isPinned {
+            maze.exit()
+        }
         resolveNow()
     }
 
-    /// Clic en dehors de l'Island : retire l'épinglage.
+    /// Clic en dehors de l'Island : retire l'épinglage et quitte une partie en cours.
     func dismissPin() {
+        maze.exit()
         guard inputs.isPinned else { return }
         inputs.isPinned = false
         resolveNow()
@@ -60,7 +72,32 @@ final class IslandModel {
     }
 
     func selectTab(_ tab: IslandTab) {
+        if tab != .game {
+            maze.exit()
+        }
         selectedTab = tab
+    }
+
+    func selectGame(_ game: GameKind) {
+        if game != .maze {
+            maze.exit()
+        }
+        selectedGame = game
+    }
+
+    /// Touche reçue pendant que l'Island a le clavier ; renvoie vrai si la partie l'utilise.
+    func handleKey(_ keyCode: UInt16) -> Bool {
+        guard maze.isEngaged, state == .expanded, selectedTab == .game, selectedGame == .maze else { return false }
+        return maze.handleKey(keyCode)
+    }
+
+    /// Pendant une partie, l'Island reste ouverte même si la souris s'éloigne.
+    private func mazeEngagementDidChange(_ engaged: Bool) {
+        if engaged {
+            inputs.isPinned = true
+            resolveNow()
+        }
+        onKeyboardFocusChange?(engaged)
     }
 
     /// `nil` masque la notification.

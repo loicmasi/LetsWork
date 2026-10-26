@@ -24,7 +24,7 @@ struct ExpandedIslandView: View {
                 case .calendar:
                     CalendarTabView(calendar: calendar, notchHeight: notchHeight)
                 case .game:
-                    TicTacToeView(game: model.game, notchHeight: notchHeight)
+                    GamesView(model: model, notchHeight: notchHeight)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)

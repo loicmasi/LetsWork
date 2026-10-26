@@ -19,6 +19,24 @@ final class IslandWindowController {
             self?.handleMouse(at: NSEvent.mouseLocation)
         }
         panel.contentView = container
+        panel.keyHandler = { [weak model] event in
+            model?.handleKey(event.keyCode) ?? false
+        }
+        model.onKeyboardFocusChange = { [weak self] wantsFocus in
+            self?.setKeyboardFocus(wantsFocus)
+        }
+    }
+
+    /// Donne le clavier à l'Island pendant une partie, puis le rend à l'app au premier plan.
+    private func setKeyboardFocus(_ wantsFocus: Bool) {
+        panel.acceptsKeyboardFocus = wantsFocus
+        if wantsFocus {
+            panel.makeKey()
+        } else if panel.isKeyWindow {
+            panel.resignKey()
+            // LetsWork n'est jamais activée par l'Island : l'app au premier plan est celle de l'utilisateur.
+            NSWorkspace.shared.frontmostApplication?.activate()
+        }
     }
 
     func show() {

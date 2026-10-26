@@ -14,7 +14,7 @@ enum IslandTab: CaseIterable, Identifiable {
         case .home: "Accueil"
         case .media: "Multimédia"
         case .calendar: "Calendrier"
-        case .game: "Morpion"
+        case .game: "Jeux"
         }
     }
 

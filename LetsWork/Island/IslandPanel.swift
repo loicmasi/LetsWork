@@ -22,6 +22,24 @@ final class IslandPanel: NSPanel {
         // Laisse passer les clics tant que la souris n'est pas sur l'Island (voir IslandWindowController).
         ignoresMouseEvents = true
     }
+
+    /// Le panneau ne prend le clavier que pendant une partie : sinon, il le volerait à l'app au premier plan.
+    var acceptsKeyboardFocus = false
+
+    /// Touches transmises à la partie en cours ; renvoie vrai si elles sont utilisées.
+    var keyHandler: ((NSEvent) -> Bool)?
+
+    override var canBecomeKey: Bool {
+        acceptsKeyboardFocus
+    }
+
+    override func sendEvent(_ event: NSEvent) {
+        // Les raccourcis avec ⌘ continuent d'aller à leur destination habituelle.
+        if event.type == .keyDown, !event.modifierFlags.contains(.command), keyHandler?(event) == true {
+            return
+        }
+        super.sendEvent(event)
+    }
 }
 
 /// Contenu de la fenêtre : héberge la vue SwiftUI et signale les mouvements de souris
