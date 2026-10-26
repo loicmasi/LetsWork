@@ -145,9 +145,8 @@ struct SettingsView: View {
                 }
             }
         }
+        // Le formulaire défile : sa hauteur est fixée par la fenêtre (SettingsWindowController).
         .formStyle(.grouped)
-        .frame(width: 460)
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func visibilityBinding(for calendarID: String) -> Binding<Bool> {
