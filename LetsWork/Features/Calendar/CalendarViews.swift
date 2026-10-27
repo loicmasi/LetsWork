@@ -180,6 +180,8 @@ struct CalendarTabView: View {
                             }
                             EventRow(event: event, now: now) {
                                 calendar.join(event)
+                            } openInCalendar: {
+                                calendar.openInCalendarApp(event)
                             }
                         }
                         if nowIndex == dayEvents.endIndex {
@@ -201,6 +203,7 @@ struct EventRow: View {
     let event: CalendarEvent
     let now: Date
     let join: () -> Void
+    let openInCalendar: () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
@@ -235,6 +238,16 @@ struct EventRow: View {
             if event.meetingLink != nil, !event.hasEnded(at: now) {
                 JoinButton(action: join)
             }
+            Button(action: openInCalendar) {
+                Image(systemName: "arrow.up.right.square")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Ouvrir dans Calendrier")
+            .accessibilityLabel("Ouvrir dans Calendrier")
         }
         .foregroundStyle(.white)
         .frame(height: 36)

@@ -131,6 +131,16 @@ final class CalendarService {
         NSWorkspace.shared.open(url)
     }
 
+    /// Ouvre l'événement dans l'app Calendrier ; à défaut d'identifiant, ouvre simplement l'app.
+    func openInCalendarApp(_ event: CalendarEvent) {
+        if let url = event.calendarAppURL, NSWorkspace.shared.open(url) {
+            return
+        }
+        if let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.iCal") {
+            NSWorkspace.shared.openApplication(at: app, configuration: NSWorkspace.OpenConfiguration())
+        }
+    }
+
     /// Ouvre le lien de visioconférence (l'app native le prend en charge si elle est installée).
     func join(_ event: CalendarEvent) {
         guard let url = event.meetingLink?.url else { return }

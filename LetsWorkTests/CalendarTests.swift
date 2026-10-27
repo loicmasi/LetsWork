@@ -83,6 +83,15 @@ struct EventTimingTests {
     }
 }
 
+struct CalendarAppLinkTests {
+    @Test func opensTheEventInCalendar() {
+        var meeting = event(startsIn: 30)
+        #expect(meeting.calendarAppURL == nil)
+        meeting.calendarItemIdentifier = "4F8E2C1A-7B3D-4E9F-A1C2-0D5B6E7F8A9B"
+        #expect(meeting.calendarAppURL?.absoluteString == "ical://ekevent/4F8E2C1A-7B3D-4E9F-A1C2-0D5B6E7F8A9B")
+    }
+}
+
 struct CalendarAggregatorTests {
     @Test func dropsCopiesOfTheSameInvitation() {
         let exchange = event("Point hebdo", startsIn: 30, id: "a", externalID: "uid-1")

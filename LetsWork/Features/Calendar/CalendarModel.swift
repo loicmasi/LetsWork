@@ -80,6 +80,13 @@ struct CalendarEvent: Identifiable, Equatable, Sendable {
     var color: CalendarColor
     var location: String?
     var meetingLink: MeetingLink?
+    /// `calendarItemIdentifier` d'EventKit, pour ouvrir l'événement dans l'app Calendrier.
+    var calendarItemIdentifier: String?
+
+    /// Lien qui ouvre l'événement dans l'app Calendrier de macOS (pour un événement répété, l'événement d'origine).
+    var calendarAppURL: URL? {
+        calendarItemIdentifier.flatMap { URL(string: "ical://ekevent/\($0)") }
+    }
 
     func isOngoing(at date: Date) -> Bool {
         start <= date && date < end

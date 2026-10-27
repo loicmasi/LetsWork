@@ -127,7 +127,8 @@ final class EventKitProvider: CalendarProvider {
             calendarTitle: event.calendar.title,
             color: CalendarColor(cgColor: event.calendar.cgColor),
             location: event.location.flatMap { $0.isEmpty ? nil : $0 },
-            meetingLink: MeetingLinkDetector.detect(url: event.url, location: event.location, notes: event.notes)
+            meetingLink: MeetingLinkDetector.detect(url: event.url, location: event.location, notes: event.notes),
+            calendarItemIdentifier: event.calendarItemIdentifier
         )
     }
 }
