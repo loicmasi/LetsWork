@@ -15,7 +15,7 @@ enum MediaTransition: Equatable {
 }
 
 /// Décide de ce que l'Island affiche selon les activités en cours (FEATURES.md, F0 › Arbitrage).
-/// Activité de fond : la lecture en cours, sinon la réunion en cours ou imminente.
+/// Activité de fond : la lecture en cours, sinon la réunion imminente, ou en cours pendant ses 10 premières secondes.
 @MainActor
 final class ActivityCoordinator {
     static let trackChangePeekDuration: Duration = .seconds(3)
@@ -34,6 +34,9 @@ final class ActivityCoordinator {
     private let island: IslandModel
     private var isMediaActive = false
     private var calendarEvent: CalendarEvent?
+    /// Événement en cours dont le compact a fait son temps : il ne reste affiché que sur l'accueil.
+    private var expiredCalendarEventID: String?
+    private var calendarCompactTask: Task<Void, Never>?
     private var peekTask: Task<Void, Never>?
     private var graceTask: Task<Void, Never>?
     private var hudTask: Task<Void, Never>?
@@ -163,7 +166,25 @@ final class ActivityCoordinator {
 
     func calendarDidChange(_ event: CalendarEvent?) {
         calendarEvent = event
+        scheduleCalendarCompactExpiry()
         updateActivity()
+    }
+
+    /// Fin du délai d'affichage de l'événement en cours ; une mise à jour du même événement ne le réaffiche pas.
+    func calendarCompactDidExpire() {
+        expiredCalendarEventID = calendarEvent?.id
+        updateActivity()
+    }
+
+    private func scheduleCalendarCompactExpiry() {
+        calendarCompactTask?.cancel()
+        guard let event = calendarEvent, event.id != expiredCalendarEventID else { return }
+        let hideDate = CalendarSchedule.compactHideDate(for: event, shownAt: .now)
+        calendarCompactTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(max(0, hideDate.timeIntervalSinceNow)))
+            guard !Task.isCancelled else { return }
+            self?.calendarCompactDidExpire()
+        }
     }
 
     /// L'alerte disparaît seule après quelques secondes, ou au clic sur l'Island.
@@ -180,7 +201,7 @@ final class ActivityCoordinator {
     private func updateActivity() {
         if isMediaActive {
             island.setActivity(.media)
-        } else if calendarEvent != nil {
+        } else if let calendarEvent, calendarEvent.id != expiredCalendarEventID {
             island.setActivity(.calendar)
         } else {
             island.setActivity(nil)

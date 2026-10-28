@@ -131,6 +131,13 @@ struct CalendarScheduleTests {
         #expect(CalendarSchedule.current(in: [allDay, ended], at: now) == nil)
     }
 
+    @Test func ongoingEventLeavesTheCompactTenSecondsAfterItStarts() {
+        let upcoming = event(startsIn: 20)
+        #expect(CalendarSchedule.compactHideDate(for: upcoming, shownAt: now) == upcoming.start.addingTimeInterval(10))
+        let ongoing = event(startsIn: -15)
+        #expect(CalendarSchedule.compactHideDate(for: ongoing, shownAt: now) == now.addingTimeInterval(10))
+    }
+
     @Test func nextLooksBeyondTheHour() {
         #expect(CalendarSchedule.next(in: [event("Demain", startsIn: 20 * 60)], at: now)?.title == "Demain")
     }
@@ -173,6 +180,22 @@ struct CalendarIslandTests {
         #expect(island.activity == .calendar)
         #expect(island.state == .compact)
         #expect(island.metrics.size(for: .compact, activity: .calendar).width == 185 + 2 * IslandMetrics.calendarWingWidth)
+    }
+
+    @Test func ongoingMeetingHidesFromTheCompactButStaysOnTheHomePage() {
+        let coordinator = coordinator()
+        let meeting = event("Point", startsIn: -5)
+        coordinator.calendarDidChange(meeting)
+        #expect(island.state == .compact)
+        coordinator.calendarCompactDidExpire()
+        #expect(island.state == .closed)
+        // Rechargement de l'agenda : le même événement ne revient pas en compact.
+        coordinator.calendarDidChange(meeting)
+        #expect(island.state == .closed)
+        #expect(HomeView.eventSummary(of: meeting, now: now) == "En cours : Point")
+        // L'événement suivant, lui, apparaît.
+        coordinator.calendarDidChange(event("Suivant", startsIn: 20))
+        #expect(island.state == .compact)
     }
 
     @Test func playbackTakesPrecedenceOverTheMeeting() {

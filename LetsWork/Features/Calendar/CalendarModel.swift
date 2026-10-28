@@ -215,6 +215,14 @@ enum CalendarAggregator {
 enum CalendarSchedule {
     /// Un événement apparaît en compact une heure avant son début.
     static let lookahead: TimeInterval = 60 * 60
+    /// Une fois commencé, il reste en compact quelques secondes, puis seulement sur l'accueil.
+    static let ongoingCompactDuration: TimeInterval = 10
+
+    /// Instant où le compact de l'événement se masque : 10 s après son début, ou 10 s après `shownAt`
+    /// s'il était déjà en cours quand il est apparu (lancement de LetsWork, fin de la lecture d'un média…).
+    static func compactHideDate(for event: CalendarEvent, shownAt: Date) -> Date {
+        max(event.start, shownAt).addingTimeInterval(ongoingCompactDuration)
+    }
 
     /// Événement du compact : en cours, sinon le prochain qui commence dans l'heure. Journées entières ignorées.
     static func current(in events: [CalendarEvent], at now: Date) -> CalendarEvent? {

@@ -68,7 +68,7 @@ Plusieurs fonctionnalités peuvent vouloir s'afficher en même temps. Un **coord
 5. **Notification** d'une autre app (F4) — temporaire, les suivantes en file ;
 6. **Indicateur de charge** au branchement (F6) — ≈ 3 s ;
 7. **Changement de piste** — compact pendant ≈ 3 s ;
-8. **Activité de fond** : lecture média en cours, sinon prochain événement, sinon état fermé.
+8. **Activité de fond** : lecture média en cours, sinon prochain événement (un événement commencé : 10 s seulement), sinon état fermé.
 
 ### Application et réglages
 
@@ -241,7 +241,7 @@ Afficher l'agenda de l'utilisateur dans l'Island en **agrégeant plusieurs compt
 
 | État | Contenu |
 |---|---|
-| **Compact** (activité de fond, si aucun média ne joue) | Pastille de couleur du calendrier + titre court + « dans 12 min » / « en cours ». |
+| **Compact** (activité de fond, si aucun média ne joue) | Pastille de couleur du calendrier + titre court + « dans 12 min » / « en cours ». Un événement commencé ne reste en compact que 10 s, puis seulement sur l'accueil. |
 | **Alerte** (T − 5 min, configurable) | Compact enrichi avec titre, heure, bouton « Rejoindre » si un lien de visio est détecté. Disparaît après ≈ 10 s ou au clic. |
 | **Étendu** | Liste chronologique de la journée (événements passés grisés), événements « toute la journée » en tête, sélecteur de jour (aujourd'hui / demain), indicateur de l'heure courante. |
 
@@ -290,7 +290,7 @@ Toutes les sources implémentent une même interface `CalendarProvider` ; un agr
 ### Décisions et limites (M3)
 
 - **Sources** : EventKit seul pour l'instant, derrière l'interface `CalendarProvider`. Les fournisseurs Google Calendar et Microsoft Graph demandent d'enregistrer une application cliente OAuth chez Google Cloud et Microsoft Entra ID ; ils restent à faire (voir Questions ouvertes).
-- **Compact** : l'événement apparaît une heure avant son début et reste affiché pendant son déroulement ; la lecture d'un média reste prioritaire. Les événements sur la journée entière n'apparaissent pas en compact.
+- **Compact** : l'événement apparaît une heure avant son début ; une fois commencé, il reste 10 s puis se masque (10 s après son apparition s'il était déjà en cours, par exemple au lancement de LetsWork) et ne reste affiché que sur l'accueil (« En cours : Titre ») et dans l'onglet Calendrier. Une mise à jour de l'agenda ne le réaffiche pas ; l'événement suivant réapparaît normalement. La lecture d'un média reste prioritaire. Les événements sur la journée entière n'apparaissent pas en compact.
 - **Alerte** : une seule fois par événement et par lancement de l'app ; délai réglable (1, 5, 10 ou 15 min, 5 par défaut).
 - **Accueil** : ligne « En cours : Titre » ou « Prochain : Titre · dans 12 min », et mini-calendrier du mois (mois en rouge, semaine commençant le lundi, week-ends grisés, jour actuel dans une pastille rouge) ; les deux ouvrent l'onglet Calendrier.
 - **Accès** : demandé depuis l'onglet Calendrier ou les réglages, jamais au lancement.
