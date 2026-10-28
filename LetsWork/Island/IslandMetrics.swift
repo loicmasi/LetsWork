@@ -13,10 +13,10 @@ struct IslandMetrics: Equatable {
     /// Ligne ajoutée sous l'encoche pour l'alerte de réunion (titre, horaire, bouton Rejoindre).
     static let alertExtraHeight: CGFloat = 56
     static let alertMinimumWidth: CGFloat = 460
-    /// Deux lignes sous l'encoche pour une notification (titre, texte).
+    /// Deux lignes sous l'encoche pour une notification (titre, texte) ou l'alerte de batterie faible.
     static let notificationExtraHeight: CGFloat = 44
     static let notificationMinimumWidth: CGFloat = 460
-    /// Ailes du HUD : l'icône à gauche, la jauge et le pourcentage à droite.
+    /// Ailes du HUD (l'icône à gauche, la jauge et le pourcentage à droite) et de l'indicateur de charge.
     static let hudWingWidth: CGFloat = 110
     static let expandedSize = CGSize(width: 600, height: 230)
     /// Marge autour de la forme pour déclencher le survol sans être pixel-perfect.
@@ -41,12 +41,12 @@ struct IslandMetrics: Equatable {
                 width: max(Self.alertMinimumWidth, notch.size.width + 2 * Self.calendarWingWidth),
                 height: notch.size.height + Self.alertExtraHeight
             )
-        case .notification:
+        case .notification, .lowBattery:
             CGSize(
                 width: max(Self.notificationMinimumWidth, notch.size.width + 2 * Self.compactWingWidth),
                 height: notch.size.height + Self.notificationExtraHeight
             )
-        case .hud:
+        case .hud, .charging:
             CGSize(width: notch.size.width + 2 * Self.hudWingWidth, height: notch.size.height)
         case .expanded:
             CGSize(
@@ -64,7 +64,7 @@ struct IslandMetrics: Equatable {
     func topCornerRadius(for state: IslandState) -> CGFloat {
         switch state {
         case .closed: 0
-        case .compact, .peek, .alert, .notification, .hud: 6
+        case .compact, .peek, .alert, .notification, .lowBattery, .hud, .charging: 6
         case .expanded: 12
         }
     }
@@ -72,9 +72,9 @@ struct IslandMetrics: Equatable {
     func bottomCornerRadius(for state: IslandState) -> CGFloat {
         switch state {
         case .closed: 10
-        case .compact, .hud: 12
+        case .compact, .hud, .charging: 12
         case .peek: 18
-        case .alert, .notification: 22
+        case .alert, .notification, .lowBattery: 22
         case .expanded: 26
         }
     }

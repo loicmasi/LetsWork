@@ -37,6 +37,11 @@ struct IslandStateTests {
         (IslandInputs(hasActivity: true, isPeeking: true), .peek),
         (IslandInputs(isPeeking: true), .closed),
         (IslandInputs(isPinned: true, hasActivity: true, isPeeking: true), .expanded),
+        (IslandInputs(hasActivity: true, isShowingCharging: true), .charging),
+        (IslandInputs(isShowingNotification: true, isShowingCharging: true), .notification),
+        (IslandInputs(isShowingAlert: true, isShowingLowBattery: true), .lowBattery),
+        (IslandInputs(isHovering: true, isShowingLowBattery: true), .expanded),
+        (IslandInputs(isShowingHUD: true, isShowingLowBattery: true), .hud),
     ])
     func resolve(inputs: IslandInputs, expected: IslandState) {
         #expect(IslandState.resolve(inputs) == expected)
@@ -60,6 +65,11 @@ struct IslandMetricsTests {
         let size = metrics.size(for: .peek)
         #expect(size.height == 32 + IslandMetrics.peekExtraHeight)
         #expect(size.width >= metrics.size(for: .compact).width)
+    }
+
+    @Test func batteryStatesReuseHUDAndNotificationShapes() {
+        #expect(metrics.size(for: .charging) == metrics.size(for: .hud))
+        #expect(metrics.size(for: .lowBattery) == metrics.size(for: .notification))
     }
 
     @Test func expandedIslandFitsInCanvas() {

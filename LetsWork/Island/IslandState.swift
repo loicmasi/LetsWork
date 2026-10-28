@@ -9,6 +9,10 @@ enum IslandState: Equatable {
     case alert
     /// Notification d'une autre app, temporaire, au style de l'aperçu de piste.
     case notification
+    /// Alerte de batterie faible : il faut brancher le Mac. Temporaire.
+    case lowBattery
+    /// Indicateur temporaire de charge, au branchement du chargeur.
+    case charging
     /// Indicateur temporaire de volume ou de luminosité.
     case hud
     case expanded
@@ -29,16 +33,21 @@ struct IslandInputs: Equatable {
     var isShowingHUD = false
     var isShowingAlert = false
     var isShowingNotification = false
+    var isShowingLowBattery = false
+    var isShowingCharging = false
 }
 
 extension IslandState {
-    /// Le HUD interrompt tout ; puis le survol ou l'épinglage, l'alerte de réunion, la notification,
-    /// l'aperçu de piste et enfin l'activité de fond (FEATURES.md, F0 › Arbitrage).
+    /// Le HUD interrompt tout ; puis le survol ou l'épinglage, la batterie faible, l'alerte de réunion,
+    /// la notification, l'indicateur de charge, l'aperçu de piste et enfin l'activité de fond
+    /// (FEATURES.md, F0 › Arbitrage).
     static func resolve(_ inputs: IslandInputs) -> IslandState {
         if inputs.isShowingHUD { return .hud }
         if inputs.isPinned || inputs.isHovering { return .expanded }
+        if inputs.isShowingLowBattery { return .lowBattery }
         if inputs.isShowingAlert { return .alert }
         if inputs.isShowingNotification { return .notification }
+        if inputs.isShowingCharging { return .charging }
         guard inputs.hasActivity else { return .closed }
         return inputs.isPeeking ? .peek : .compact
     }

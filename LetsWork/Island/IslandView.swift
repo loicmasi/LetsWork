@@ -4,6 +4,7 @@ struct IslandView: View {
     let model: IslandModel
     let media: MediaService
     let calendar: CalendarService
+    let battery: BatteryService
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -25,10 +26,12 @@ struct IslandView: View {
         .clipShape(shape)
         .contentShape(shape)
         .onTapGesture {
-            // Un clic sur l'alerte la referme ; sur une notification, il ouvre l'app ; ailleurs, il épingle l'Island.
+            // Un clic sur une alerte la referme ; sur une notification, il ouvre l'app ; ailleurs, il épingle l'Island.
             switch state {
             case .alert:
                 model.setAlert(nil)
+            case .lowBattery:
+                model.setLowBattery(false)
             case .notification:
                 if let notification = model.notification {
                     NotificationApp.open(bundleIdentifier: notification.bundleIdentifier)
@@ -80,12 +83,26 @@ struct IslandView: View {
             if let notification = model.notification {
                 NotificationPopupView(notification: notification, notch: metrics.notch)
             }
+        case .lowBattery:
+            if let status = battery.status {
+                LowBatteryAlertView(status: status, notch: metrics.notch)
+            }
+        case .charging:
+            if let status = battery.status {
+                ChargingIndicatorView(status: status, notch: metrics.notch)
+            }
         case .hud:
             if let hud = model.hud {
                 HUDView(state: hud, notch: metrics.notch)
             }
         case .expanded:
-            ExpandedIslandView(model: model, media: media, calendar: calendar, notchHeight: metrics.notch.size.height)
+            ExpandedIslandView(
+                model: model,
+                media: media,
+                calendar: calendar,
+                battery: battery,
+                notchHeight: metrics.notch.size.height
+            )
         }
     }
 }

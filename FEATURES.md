@@ -17,6 +17,7 @@ Ce document décrit **ce que fait** l'application. La mise en place technique du
 - [F3 — Calendrier multi-sources](#f3--calendrier-multi-sources)
 - [F4 — Notifications des apps](#f4--notifications-des-apps)
 - [F5 — Jeux : Morpion et Glouton](#f5--jeux--morpion-et-glouton)
+- [F6 — Batterie](#f6--batterie)
 - [Exigences non fonctionnelles](#exigences-non-fonctionnelles)
 - [Jalons](#jalons)
 - [Questions ouvertes](#questions-ouvertes)
@@ -61,9 +62,13 @@ Les trois fonctionnalités s'appuient sur un socle commun, à construire en prem
 Plusieurs fonctionnalités peuvent vouloir s'afficher en même temps. Un **coordinateur d'activités** décide de ce qui est montré, selon cette priorité :
 
 1. **HUD** (volume / luminosité) — interrompt tout, temporaire ;
-2. **Alerte calendrier** (réunion dans ≤ 5 min / en cours) — temporaire, puis retour à l'activité de fond ;
-3. **Changement de piste** — compact pendant ≈ 3 s ;
-4. **Activité de fond** : lecture média en cours, sinon prochain événement, sinon état fermé.
+2. **Survol ou épinglage** — état étendu ;
+3. **Batterie faible** (F6) — temporaire ;
+4. **Alerte calendrier** (réunion dans ≤ 5 min / en cours) — temporaire, puis retour à l'activité de fond ;
+5. **Notification** d'une autre app (F4) — temporaire, les suivantes en file ;
+6. **Indicateur de charge** au branchement (F6) — ≈ 3 s ;
+7. **Changement de piste** — compact pendant ≈ 3 s ;
+8. **Activité de fond** : lecture média en cours, sinon prochain événement, sinon état fermé.
 
 ### Application et réglages
 
@@ -381,6 +386,37 @@ Jeu de labyrinthe dans l'esprit de Pac-Man (marque de Bandai Namco), avec un lab
 
 ---
 
+## F6 — Batterie
+
+### Objectif
+
+Voir le niveau de la batterie dans l'Island, être averti du branchement du chargeur à la manière de l'iPhone, et être prévenu quand il faut brancher le Mac.
+
+### Affichage
+
+| Élément | Contenu |
+|---|---|
+| **Accueil** (état étendu) | Dans l'espace à droite de l'encoche : pourcentage et pile remplie au niveau exact, verte sur secteur (avec un éclair en charge), rouge à 20 % ou moins sur batterie, blanche sinon. |
+| **Branchement du chargeur** | Pendant ≈ 3 s, dans les ailes : éclair vert et « En charge » (ou « Chargée », « Sur secteur » quand macOS suspend la charge) à gauche ; pourcentage et pile à droite. |
+| **Batterie faible** | Pile et pourcentage en rouge dans les ailes ; sous l'encoche, « Batterie faible » puis « Branchez votre Mac sur le secteur · environ 25 min restantes » (autonomie estimée par macOS, si elle est connue). Disparaît après ≈ 10 s, au clic ou au branchement. |
+
+### Règles de gestion
+
+- **Seuils** : première alerte au seuil choisi (10, 15, 20 ou 30 %, 20 % par défaut), puis rappels à 10 % et 5 %. Chaque seuil n'alerte qu'une fois par décharge ; une chute de plusieurs seuils d'un coup (sortie de veille) ne donne qu'une alerte. Le branchement réinitialise les seuils.
+- **Au lancement** de LetsWork, une batterie déjà sous le seuil déclenche l'alerte ; l'indicateur de charge n'apparaît qu'à un vrai branchement.
+- **Lecture** : batterie interne via IOKit (`IOPSCopyPowerSourcesInfo`), mise à jour à chaque changement publié par macOS (`kIOPSNotifyAnyPowerSource`), sans interrogation périodique. Aucune autorisation n'est nécessaire.
+- **Réglages** › Batterie : charge actuelle, indicateur de charge au branchement (activé par défaut), alerte de batterie faible (activée par défaut) et seuil de la première alerte.
+- Sur un Mac sans batterie, rien n'est affiché et les réglages l'indiquent.
+
+### Critères d'acceptation
+
+- [ ] L'accueil affiche le même pourcentage que la barre des menus.
+- [ ] Brancher le chargeur affiche « En charge » pendant ≈ 3 s, puis l'Island revient à son état précédent.
+- [ ] Débrancher sous le seuil affiche l'alerte de batterie faible ; rebrancher la remplace par l'indicateur de charge.
+- [ ] Sur batterie, l'alerte revient à 10 % puis à 5 %, une seule fois chacune.
+
+---
+
 ## Exigences non fonctionnelles
 
 | Domaine | Exigence |
@@ -407,6 +443,7 @@ Jeu de labyrinthe dans l'esprit de Pac-Man (marque de Bandai Namco), avec un lab
 | **M4 — Finition** | Assistant de premier lancement, localisation, accessibilité, signature Developer ID, notarisation, mises à jour (Sparkle). | DMG notarisé installable sur un autre Mac. | À faire |
 | **F4 — Notifications** | Lecture de la base du centre de notifications, pop-up dans l'Island, file d'attente, réglages et accès complet au disque. | Critères d'acceptation F4. | Validé sur macOS 27.0.1 : lecture, décodage et pop-up ; délai d'environ 5 s imposé par macOS |
 | **F5 — Jeux** | Onglet Jeux : Morpion contre un bot (trois niveaux, score) et Glouton (labyrinthe, fantômes, clavier pendant la partie). | Critères d'acceptation F5. | Morpion codé et testé ; Glouton codé sans tests dédiés ; à vérifier à l'écran |
+| **F6 — Batterie** | Lecture IOKit, niveau sur l'accueil, indicateur de charge au branchement, alerte de batterie faible avec rappels, réglages. | Critères d'acceptation F6. | Codé et testé ; niveau de l'accueil constaté à l'écran ; branchement et alerte vérifiés en rendu, à constater en débranchant |
 
 ---
 

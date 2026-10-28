@@ -5,6 +5,7 @@ struct ExpandedIslandView: View {
     let model: IslandModel
     let media: MediaService
     let calendar: CalendarService
+    let battery: BatteryService
     let notchHeight: CGFloat
 
     var body: some View {
@@ -15,6 +16,7 @@ struct ExpandedIslandView: View {
                     HomeView(
                         media: media,
                         calendar: calendar,
+                        battery: battery,
                         notchHeight: notchHeight,
                         openMedia: { model.selectTab(.media) },
                         openCalendar: { model.selectTab(.calendar) }
@@ -75,10 +77,12 @@ private struct IslandTabBar: View {
     }
 }
 
-/// Page d'accueil : date, heure, puis la lecture en cours et le prochain événement, qui mènent à leur onglet.
+/// Page d'accueil : date, heure, puis la lecture en cours et le prochain événement, qui mènent à leur onglet ;
+/// le niveau de la batterie à droite de l'encoche.
 struct HomeView: View {
     let media: MediaService
     let calendar: CalendarService
+    let battery: BatteryService
     let notchHeight: CGFloat
     let openMedia: () -> Void
     let openCalendar: () -> Void
@@ -96,6 +100,13 @@ struct HomeView: View {
             }
             .padding(.horizontal, 24)
             .padding(.top, notchHeight + 8)
+        }
+        .overlay(alignment: .topTrailing) {
+            if let status = battery.status {
+                BatteryIndicator(status: status)
+                    .frame(height: notchHeight)
+                    .padding(.trailing, 22)
+            }
         }
     }
 

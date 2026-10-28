@@ -6,6 +6,7 @@ struct SettingsView: View {
     @Bindable var hud: HUDService
     @Bindable var calendar: CalendarService
     @Bindable var notifications: NotificationService
+    @Bindable var battery: BatteryService
 
     @AppStorage(AppSettings.displayTargetKey) private var displayTarget: DisplayTarget = .notchScreen
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
@@ -71,6 +72,31 @@ struct SettingsView: View {
                     }
                     .font(.callout)
                     .foregroundStyle(.secondary)
+                }
+            }
+            Section("Batterie") {
+                if let status = battery.status {
+                    LabeledContent("Charge") {
+                        Text("\(status.percentText) · \(status.summary)")
+                    }
+                    Toggle("Afficher l'indicateur de charge au branchement", isOn: $battery.showsChargingIndicator)
+                    Toggle("Prévenir quand il faut brancher le Mac", isOn: $battery.warnsWhenLow)
+                    if battery.warnsWhenLow {
+                        Picker("Première alerte", selection: $battery.lowThreshold) {
+                            ForEach(BatteryService.thresholdChoices, id: \.self) { percent in
+                                Text("\(percent) %").tag(percent)
+                            }
+                        }
+                        let reminders = LowBatteryWatch.thresholds(startingAt: battery.lowThreshold).dropFirst()
+                        if !reminders.isEmpty {
+                            Text("Puis un rappel à \(reminders.map { "\($0) %" }.joined(separator: " et ")).")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } else {
+                    Text("Aucune batterie détectée sur ce Mac.")
+                        .foregroundStyle(.secondary)
                 }
             }
             Section("Calendrier") {

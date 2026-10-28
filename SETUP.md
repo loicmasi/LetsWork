@@ -309,6 +309,10 @@ LetsWork/
 │   │   │   ├── FileChangeWatcher.swift surveillance (kqueue) du dossier et des fichiers de la base
 │   │   │   ├── NotificationService.swift  @Observable : accès, nouvelles notifications
 │   │   │   └── NotificationPopupView.swift  pop-up au style de l'aperçu de piste
+│   │   ├── Battery/
+│   │   │   ├── BatteryStatus.swift     état de la batterie (IOKit), seuils d'alerte, textes
+│   │   │   ├── BatteryService.swift    @Observable : lecture, abonnement aux changements, réglages
+│   │   │   └── BatteryViews.swift      pile, niveau de l'accueil, indicateur de charge, alerte
 │   │   └── Game/
 │   │       ├── GamesView.swift         onglet Jeux et sélecteur Morpion / Glouton
 │   │       ├── TicTacToe.swift         plateau, victoire, bot (minimax et niveaux)
@@ -328,6 +332,7 @@ LetsWork/
 │   ├── HUDTests.swift
 │   ├── CalendarTests.swift
 │   ├── NotificationTests.swift
+│   ├── BatteryTests.swift
 │   └── GameTests.swift
 ├── Vendor/
 │   ├── mediaremote-adapter/            sous-module git (v0.7.7)
@@ -364,6 +369,7 @@ IslandModel → IslandView (SwiftUI) — animations
 - **HUD** : `MediaKeyTap` (event tap de session, en tête de file) reçoit les événements système `NX_KEYTYPE_*` et les touches 144/145. `HUDService` applique le changement (Core Audio ou DisplayServices), absorbe l'événement pour que macOS n'affiche pas son indicateur, puis `HUDService.onShow` prévient `ActivityCoordinator`, qui affiche l'état `.hud` pendant 1,5 s après la dernière pression. ⌥ seul laisse passer la touche (macOS ouvre le réglage) ; ⌥⇧ règle par pas de 1/64.
 - **Calendrier** : `EventKitProvider` lit les comptes macOS ; `CalendarService` fusionne et filtre les événements d'aujourd'hui à J+7, recalcule l'événement du compact et les alertes au prochain instant utile (début de la fenêtre d'une heure, alerte, début, fin), puis prévient `ActivityCoordinator` (`onUpcomingChange`, `onAlert`). Activité de fond : la lecture si elle est active, sinon la réunion. L'alerte reste 10 s, sauf clic. Rechargement sur `EKEventStoreChanged`, changement de jour et sortie de veille.
 - **Notifications** : `FileChangeWatcher` (kqueue, sur le dossier, `db` et `db-wal` ; FSEvents ne remonte rien pour ce dossier protégé) signale une écriture dans la base, avec une vérification de secours toutes les 10 s ; `NotificationService` lit les enregistrements plus récents que le dernier vu, les décode et prévient `ActivityCoordinator` (`onNotification`), qui affiche l'état `.notification` 5 s et met les suivantes en file.
+- **Batterie** : `BatteryService` lit la batterie interne (`IOPSCopyPowerSourcesInfo`) et s'abonne à `kIOPSNotifyAnyPowerSource` (`notify_register_dispatch`), sans interrogation périodique. `LowBatteryWatch` en déduit le branchement, le débranchement et le passage sous un seuil d'alerte ; `BatteryService.onEvent` prévient `ActivityCoordinator`, qui affiche l'indicateur de charge (`.charging`, 3 s) ou l'alerte (`.lowBattery`, 10 s, sauf clic). Le branchement retire l'alerte.
 - **Clavier pendant une partie** : `IslandPanel` ne peut devenir fenêtre clé que si `acceptsKeyboardFocus` est vrai. Pendant une partie de Glouton, `IslandModel` le demande à `IslandWindowController` (`onKeyboardFocusChange`), qui rend ensuite le clavier à l'app au premier plan. Les touches passent par `IslandPanel.sendEvent` puis `IslandModel.handleKey` ; les raccourcis avec ⌘ ne sont pas interceptés.
 
 ### Conventions

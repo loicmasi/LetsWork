@@ -108,7 +108,7 @@ struct NotificationIslandTests {
     @Test func notificationsWaitTheirTurn() {
         let coordinator = ActivityCoordinator(
             island: island, media: MediaService(), hud: HUDService(),
-            calendar: CalendarService(providers: []), notifications: NotificationService()
+            calendar: CalendarService(providers: []), notifications: NotificationService(), battery: BatteryService()
         )
         coordinator.showNotification(notification(1))
         coordinator.showNotification(notification(2))

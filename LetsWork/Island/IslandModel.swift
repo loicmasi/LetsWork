@@ -107,6 +107,20 @@ final class IslandModel {
         resolveNow()
     }
 
+    /// Alerte de batterie faible ; le niveau affiché est lu dans `BatteryService`.
+    func setLowBattery(_ showing: Bool) {
+        guard showing != inputs.isShowingLowBattery else { return }
+        inputs.isShowingLowBattery = showing
+        resolveNow()
+    }
+
+    /// Indicateur de charge au branchement du chargeur.
+    func setCharging(_ showing: Bool) {
+        guard showing != inputs.isShowingCharging else { return }
+        inputs.isShowingCharging = showing
+        resolveNow()
+    }
+
     /// `nil` masque l'alerte de réunion.
     func setAlert(_ event: CalendarEvent?) {
         alert = event

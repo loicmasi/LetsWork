@@ -26,6 +26,10 @@ final class ActivityCoordinator {
     static let alertDuration: Duration = .seconds(10)
     /// Durée d'affichage d'une notification ; les suivantes attendent leur tour.
     static let notificationDuration: Duration = .seconds(5)
+    /// Durée de l'indicateur de charge au branchement.
+    static let chargingDuration: Duration = .seconds(3)
+    /// Durée d'affichage de l'alerte de batterie faible, sauf clic.
+    static let lowBatteryDuration: Duration = .seconds(10)
 
     private let island: IslandModel
     private var isMediaActive = false
@@ -35,9 +39,18 @@ final class ActivityCoordinator {
     private var hudTask: Task<Void, Never>?
     private var alertTask: Task<Void, Never>?
     private var notificationTask: Task<Void, Never>?
+    private var chargingTask: Task<Void, Never>?
+    private var lowBatteryTask: Task<Void, Never>?
     private var pendingNotifications: [SystemNotification] = []
 
-    init(island: IslandModel, media: MediaService, hud: HUDService, calendar: CalendarService, notifications: NotificationService) {
+    init(
+        island: IslandModel,
+        media: MediaService,
+        hud: HUDService,
+        calendar: CalendarService,
+        notifications: NotificationService,
+        battery: BatteryService
+    ) {
         self.island = island
         media.onChange = { [weak self] previous, current in
             self?.mediaDidChange(from: previous, to: current)
@@ -56,6 +69,37 @@ final class ActivityCoordinator {
         }
         island.onNotificationTap = { [weak self] in
             self?.dismissNotification()
+        }
+        battery.onEvent = { [weak self, weak battery] event in
+            self?.batteryDidChange(event, showsChargingIndicator: battery?.showsChargingIndicator ?? false)
+        }
+    }
+
+    /// Au branchement, l'alerte de batterie faible laisse place à l'indicateur de charge.
+    func batteryDidChange(_ event: BatteryEvent, showsChargingIndicator: Bool) {
+        switch event {
+        case .pluggedIn:
+            lowBatteryTask?.cancel()
+            island.setLowBattery(false)
+            guard showsChargingIndicator else { return }
+            island.setCharging(true)
+            chargingTask?.cancel()
+            chargingTask = Task { [weak self] in
+                try? await Task.sleep(for: Self.chargingDuration)
+                guard !Task.isCancelled else { return }
+                self?.island.setCharging(false)
+            }
+        case .unplugged:
+            chargingTask?.cancel()
+            island.setCharging(false)
+        case .low:
+            island.setLowBattery(true)
+            lowBatteryTask?.cancel()
+            lowBatteryTask = Task { [weak self] in
+                try? await Task.sleep(for: Self.lowBatteryDuration)
+                guard !Task.isCancelled else { return }
+                self?.island.setLowBattery(false)
+            }
         }
     }
 
