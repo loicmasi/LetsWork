@@ -50,6 +50,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            SpotifySettingsSection(spotify: media.spotify)
             Section("Volume et luminosité") {
                 Toggle("Remplacer les indicateurs de macOS", isOn: $hud.isEnabled)
                 LabeledContent("Autorisation Accessibilité") {
@@ -218,6 +219,63 @@ private extension MediaService.Status {
             "L'adaptateur média n'est pas embarqué : lancer « make adapter » puis recompiler. Les vidéos des navigateurs ne sont pas détectées."
         case .appleScriptFallback(adapterMissing: false):
             "L'adaptateur média a échoué à plusieurs reprises, probablement après une mise à jour de macOS. Les vidéos des navigateurs ne sont pas détectées."
+        }
+    }
+}
+
+/// Connexion du compte Spotify, nécessaire au « J'aime » ; l'aléatoire et la répétition n'en ont pas besoin.
+private struct SpotifySettingsSection: View {
+    @Bindable var spotify: SpotifyService
+
+    var body: some View {
+        Section("Spotify") {
+            Text("L'aléatoire et la répétition marchent sans réglage : macOS demande l'autorisation de piloter Spotify au premier clic.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            switch spotify.account {
+            case .connected:
+                LabeledContent("Compte") {
+                    Label("Connecté", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                }
+                Button("Se déconnecter", action: spotify.disconnect)
+            case .connecting:
+                LabeledContent("Compte") {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Connexion dans le navigateur…")
+                    }
+                }
+                Button("Annuler", action: spotify.cancelConnection)
+            case .disconnected:
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Pour liker le titre en cours, connectez LetsWork à votre compte (Premium requis) :")
+                    Text("1. Créez une app sur le [tableau de bord Spotify for Developers](https://developer.spotify.com/dashboard), avec l'API « Web API ».")
+                    Text("2. Ajoutez-y cette URI de redirection :")
+                    HStack {
+                        Text(verbatim: SpotifyAuthorization.redirectURI)
+                            .font(.callout.monospaced())
+                            .textSelection(.enabled)
+                        Button("Copier") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(SpotifyAuthorization.redirectURI, forType: .string)
+                        }
+                        .controlSize(.small)
+                    }
+                    Text("3. Collez le Client ID de l'app ci-dessous, puis connectez-vous.")
+                }
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                TextField("Client ID", text: $spotify.clientID)
+                    .font(.body.monospaced())
+                Button("Se connecter à Spotify", action: spotify.connect)
+                    .disabled(spotify.clientID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            if let error = spotify.lastError {
+                Text(error)
+                    .foregroundStyle(.red)
+            }
         }
     }
 }

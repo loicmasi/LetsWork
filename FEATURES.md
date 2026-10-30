@@ -99,13 +99,14 @@ Voir et piloter **ce qui joue sur le Mac**, quelle que soit la source : applicat
 - Je peux mettre en pause, reprendre, passer au titre suivant/précédent et me déplacer dans la piste depuis l'Island.
 - Quand une vidéo YouTube joue dans mon navigateur, l'Island l'indique avec l'icône du navigateur.
 - Un clic sur la pochette ou l'icône de la source ramène l'application (ou le navigateur) au premier plan.
+- Quand Spotify joue, je peux activer l'aléatoire ou la répétition, et liker le titre en cours, sans ouvrir Spotify.
 
 ### Affichage
 
 | État | Contenu |
 |---|---|
 | **Compact** | Aile gauche : pochette miniature (ou icône de la source). Aile droite : égaliseur animé si lecture en cours, icône pause sinon. |
-| **Étendu** (onglet Multimédia) | Pochette grand format, titre, artiste/chaîne, album, icône de la source, barre de progression interactive (temps écoulé / durée), boutons précédent / lecture-pause / suivant. Teinte d'accent dérivée de la couleur dominante de la pochette. Sur la partie écoulée de la barre, trois couches de dômes animées défilent en sens opposés, chacune dans une nuance de la pochette (discrète, intermédiaire, contrastée) ; elles s'aplatissent et se figent en pause, et restent immobiles si « Réduire les animations » est activé. |
+| **Étendu** (onglet Multimédia) | Pochette grand format, titre, artiste/chaîne, album, icône de la source, barre de progression interactive (temps écoulé / durée), boutons précédent / lecture-pause / suivant. Avec Spotify : cœur « J'aime » à gauche de l'icône de la source, boutons aléatoire et répétition de part et d'autre des contrôles (teinte de la pochette et point dessous quand le mode est actif). Teinte d'accent dérivée de la couleur dominante de la pochette. Sur la partie écoulée de la barre, trois couches de dômes animées défilent en sens opposés, chacune dans une nuance de la pochette (discrète, intermédiaire, contrastée) ; elles s'aplatissent et se figent en pause, et restent immobiles si « Réduire les animations » est activé. |
 | **Changement de piste** | Passage en compact enrichi (titre défilant) pendant ≈ 3 s. |
 
 ### Sources et méthodes de récupération
@@ -115,6 +116,7 @@ Voir et piloter **ce qui joue sur le Mac**, quelle que soit la source : applicat
 | Toute app publiant dans le « Now Playing » de macOS (Apple Music, Spotify, Podcasts, TV, navigateurs, VLC, IINA…) | **MediaRemote** (framework privé) via [mediaremote-adapter](https://github.com/ungive/mediaremote-adapter) | titre, artiste, album, durée, position, pochette, état lecture, bundle id de l'app source | lecture, pause, bascule, suivant, précédent, seek |
 | Safari, Chrome, Edge, Arc, Brave, Firefox | Même canal : les navigateurs exposent la Media Session API des pages (YouTube, Netflix, SoundCloud…) au Now Playing de macOS | titre de la vidéo, chaîne, durée, position, vignette (selon le site) | idem (selon ce que la page déclare) |
 | Spotify, Apple Music (complément) | **AppleScript / Scripting Bridge** + notifications distribuées `com.spotify.client.PlaybackStateChanged` et `com.apple.Music.playerInfo` | état de **chaque** app, même quand elle n'est pas la source « active » | lecture, pause, suivant, précédent, position |
+| Spotify (commandes propres) | **AppleScript** de Spotify, plus l'**API Web Spotify** pour la bibliothèque | aléatoire, répétition, URI du titre (`spotify:track:…`) ; titre liké ou non | aléatoire, répétition, « J'aime » |
 
 **Pourquoi un adaptateur ?** Depuis macOS 15.4, le framework MediaRemote n'est plus utilisable directement depuis une application tierce. `mediaremote-adapter` contourne la restriction en faisant exécuter un petit framework par `/usr/bin/perl`, binaire système autorisé, et diffuse les changements en JSON sur la sortie standard (`stream`). Les commandes passent par `send <id>` et `seek <µs>`. Le canal reste **non officiel** : il peut casser à chaque mise à jour de macOS ; il doit donc être isolé derrière une interface, avec le canal AppleScript comme repli.
 
@@ -126,15 +128,29 @@ Voir et piloter **ce qui joue sur le Mac**, quelle que soit la source : applicat
 - **Pochette absente** : icône de l'application source sur fond flouté.
 - **Fin de lecture / fermeture de l'app source** : retour à l'activité suivante selon l'arbitrage F0 après ≈ 5 s.
 
+### Spotify : aléatoire, répétition et « J'aime »
+
+Spotify ne publie dans le « Now Playing » de macOS ni son mode aléatoire, ni sa répétition, ni l'identifiant du titre : ces commandes passent par l'AppleScript de Spotify (`shuffling`, `repeating`, `id of current track`), quelle que soit la source de lecture (adaptateur ou repli).
+
+- **Visibilité** : les trois boutons n'apparaissent que si la lecture en cours vient de Spotify.
+- **État** : relu par AppleScript 0,3 s après chaque changement de titre et à chaque ouverture de l'onglet Multimédia (pour suivre ce qui a été changé dans Spotify), puis 0,5 s après un clic pour afficher l'état réellement appliqué. Cette lecture ne déclenche jamais la demande d'autorisation : c'est le premier clic sur un des boutons qui la déclenche.
+- **Répétition** : l'AppleScript de Spotify ne connaît que « activée / désactivée » ; l'activer répète la playlist ou l'album. La répétition du titre seul reste à choisir dans Spotify.
+- **« J'aime »** : l'API Web Spotify (`GET /me/library/contains`, `PUT` et `DELETE /me/library`, avec l'URI du titre). Le cœur est plein si le titre est dans « Titres likés ». Il change dès le clic et revient en arrière si Spotify refuse. Les épisodes de podcast s'enregistrent de la même façon ; publicités et fichiers locaux ne se likent pas.
+- **Compte Spotify** : connexion dans Réglages › Spotify, par le flux OAuth *Authorization Code with PKCE* (aucun secret dans l'app). Il faut une app créée sur developer.spotify.com, son Client ID et l'URI de redirection `http://127.0.0.1:43219/callback`, écoutée par LetsWork le temps de la connexion (5 min au plus). Le jeton de rafraîchissement va dans le Trousseau ; le jeton d'accès reste en mémoire et se renouvelle de lui-même. Depuis février 2026, une app Spotify en mode développement exige que son propriétaire soit abonné à Premium.
+- **Sans compte connecté** : un clic sur le cœur ouvre les réglages.
+- **Erreurs** : le dernier refus de Spotify s'affiche dans Réglages › Spotify. Un jeton révoqué ou expiré déconnecte le compte.
+
 ### Autorisations
 
-- **Automatisation** (Apple Events) vers Spotify et Music, demandée uniquement si le canal AppleScript est utilisé.
+- **Automatisation** (Apple Events) vers Spotify et Music, demandée si le canal AppleScript est utilisé, et vers Spotify au premier clic sur l'aléatoire, la répétition ou « J'aime ».
 - Aucune autorisation n'est nécessaire pour le canal MediaRemote via l'adaptateur.
+- **Compte Spotify** (OAuth, scopes `user-library-read` et `user-library-modify`), seulement pour « J'aime ».
 
 ### Critères d'acceptation
 
 - [ ] Lecture dans Apple Music : titre, artiste, pochette et progression s'affichent en < 1 s après le démarrage.
 - [ ] Lecture dans Spotify : idem, et les contrôles agissent sur Spotify.
+- [ ] Spotify : les boutons aléatoire et répétition reflètent l'état de Spotify et le changent ; le cœur indique si le titre est liké, et un clic l'ajoute aux « Titres likés » ou l'en retire.
 - [ ] Vidéo YouTube dans Safari puis dans Chrome : l'Island affiche le titre de la vidéo et l'icône du bon navigateur ; pause/lecture fonctionne depuis l'Island.
 - [ ] Le seek dans la barre de progression déplace réellement la lecture.
 - [ ] Si l'adaptateur échoue (`test` ≠ 0), l'app bascule sur le canal AppleScript pour Music/Spotify et le signale dans les réglages.
@@ -149,7 +165,7 @@ Voir et piloter **ce qui joue sur le Mac**, quelle que soit la source : applicat
 ### Évolutions (hors v1)
 
 - Visualiseur audio réel (spectre) via les *process taps* Core Audio (macOS 14.2+) — nécessite l'autorisation d'enregistrement audio.
-- Bouton « J'aime » / ajout à une playlist (Spotify Web API, Apple Music via AppleScript).
+- Ajout à une playlist (API Web Spotify) ; « J'aime », aléatoire et répétition pour Apple Music (AppleScript).
 - Sélecteur de sortie audio (AirPods, enceintes AirPlay).
 
 ---

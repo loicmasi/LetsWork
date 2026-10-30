@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// Onglet Multimédia : pochette, titre, source, progression et contrôles, ou un message si rien ne joue.
+/// Avec Spotify s'ajoutent le « J'aime », l'aléatoire et la répétition.
 struct MediaExpandedView: View {
     let media: MediaService
     let notchHeight: CGFloat
@@ -25,18 +26,32 @@ struct MediaExpandedView: View {
                     }
                     .lineLimit(1)
                     Spacer(minLength: 0)
-                    if let app = media.sourceApp {
-                        Button(action: media.activateSourceApp) {
-                            Image(nsImage: app.icon)
-                                .resizable()
-                                .frame(width: 22, height: 22)
+                    HStack(spacing: 12) {
+                        if media.isSpotifySource {
+                            LikeButton(spotify: media.spotify, accent: media.accent)
                         }
-                        .buttonStyle(.plain)
-                        .help(app.name)
+                        if let app = media.sourceApp {
+                            Button(action: media.activateSourceApp) {
+                                Image(nsImage: app.icon)
+                                    .resizable()
+                                    .frame(width: 22, height: 22)
+                            }
+                            .buttonStyle(.plain)
+                            .help(app.name)
+                        }
                     }
                 }
                 PlaybackProgressView(media: media, nowPlaying: nowPlaying)
                 HStack(spacing: 36) {
+                    if media.isSpotifySource {
+                        ModeButton(
+                            symbol: "shuffle",
+                            label: "Lecture aléatoire",
+                            isOn: media.spotify.playback?.isShuffling == true,
+                            accent: media.accent,
+                            action: media.spotify.toggleShuffle
+                        )
+                    }
                     ControlButton(symbol: "backward.fill", label: "Piste précédente", action: media.previousTrack)
                     ControlButton(
                         symbol: nowPlaying.isPlaying ? "pause.fill" : "play.fill",
@@ -45,6 +60,21 @@ struct MediaExpandedView: View {
                         action: media.togglePlayPause
                     )
                     ControlButton(symbol: "forward.fill", label: "Piste suivante", action: media.nextTrack)
+                    if media.isSpotifySource {
+                        ModeButton(
+                            symbol: "repeat",
+                            label: "Répéter",
+                            isOn: media.spotify.playback?.isRepeating == true,
+                            accent: media.accent,
+                            action: media.spotify.toggleRepeat
+                        )
+                    }
+                }
+            }
+            // Suit ce qui a changé dans Spotify depuis la dernière ouverture de l'onglet.
+            .onAppear {
+                if media.isSpotifySource {
+                    media.spotify.refresh()
                 }
             }
             // Avec une encoche de 32 pt, remplit exactement IslandMetrics.expandedSize (230 pt).
@@ -90,6 +120,62 @@ private struct ControlButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
+    }
+}
+
+/// Aléatoire ou répétition : teinte de la pochette et point dessous quand le mode est actif.
+private struct ModeButton: View {
+    let symbol: String
+    let label: LocalizedStringKey
+    let isOn: Bool
+    let accent: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(isOn ? accent : .white.opacity(0.45))
+                .frame(width: 36, height: 28)
+                .overlay(alignment: .bottom) {
+                    if isOn {
+                        Circle()
+                            .fill(accent)
+                            .frame(width: 4, height: 4)
+                            .offset(y: 4)
+                    }
+                }
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityValue(isOn ? Text("Activé") : Text("Désactivé"))
+    }
+}
+
+/// Ajoute le titre aux « Titres likés » de Spotify ou l'en retire. Sans compte connecté, ouvre les réglages.
+private struct LikeButton: View {
+    let spotify: SpotifyService
+    let accent: Color
+
+    var body: some View {
+        let isLiked = spotify.isLiked == true
+        Button(action: spotify.toggleLike) {
+            Image(systemName: isLiked ? "heart.fill" : "heart")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(isLiked ? accent : .white.opacity(0.7))
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: 26, height: 26)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(help(isLiked: isLiked))
+        .accessibilityLabel(isLiked ? "Retirer des Titres likés" : "Ajouter aux Titres likés")
+    }
+
+    private func help(isLiked: Bool) -> LocalizedStringKey {
+        guard spotify.account == .connected else { return "Connecter Spotify dans les réglages pour liker ce titre" }
+        return isLiked ? "Retirer des Titres likés" : "Ajouter aux Titres likés"
     }
 }
 

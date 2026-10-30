@@ -37,6 +37,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         calendar.onCreateEventRequest = { [weak self] day in
             self?.eventEditor.show(day: day)
         }
+        media.spotify.onSettingsRequest = { [weak self] in
+            self?.showSettings()
+        }
         calendar.start()
         notifications.start()
         battery.start()

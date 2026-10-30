@@ -147,24 +147,11 @@ final class AppleScriptSource: NowPlayingSource {
 
     /// Ne déclenche jamais la demande d'autorisation : sans accord préalable, on attend les notifications.
     private func currentState(of player: Player) -> NowPlaying? {
-        guard isRunning(player) else { return nil }
-        let target = NSAppleEventDescriptor(bundleIdentifier: player.bundleIdentifier)
-        let permission = AEDeterminePermissionToAutomateTarget(
-            target.aeDesc,
-            AEEventClass(typeWildCard),
-            AEEventID(typeWildCard),
-            false
-        )
-        guard permission == noErr else { return nil }
-        var error: NSDictionary?
-        guard let result = NSAppleScript(source: player.stateScript)?.executeAndReturnError(&error), error == nil else {
-            return nil
-        }
+        guard
+            AppAutomation.isAllowed(player.bundleIdentifier),
+            let result = AppAutomation.run(player.stateScript, in: player.bundleIdentifier, name: player.applicationName)
+        else { return nil }
         return Self.nowPlaying(fromScriptResult: result, player: player, at: .now)
-    }
-
-    private func isRunning(_ player: Player) -> Bool {
-        !NSRunningApplication.runningApplications(withBundleIdentifier: player.bundleIdentifier).isEmpty
     }
 
     private func stopObserving() {
@@ -185,12 +172,39 @@ final class AppleScriptSource: NowPlayingSource {
     }
 
     private func run(_ source: String, on player: Player) {
-        // `tell application` lancerait l'app si elle était fermée.
-        guard isRunning(player) else { return }
+        AppAutomation.run(source, in: player.bundleIdentifier, name: player.applicationName)
+    }
+}
+
+/// AppleScript vers une app de lecture, sans jamais la lancer : `tell application` ouvrirait une app fermée.
+@MainActor
+enum AppAutomation {
+    static func isRunning(_ bundleIdentifier: String) -> Bool {
+        !NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).isEmpty
+    }
+
+    /// Autorisation Automatisation déjà accordée ; ne déclenche jamais la demande.
+    static func isAllowed(_ bundleIdentifier: String) -> Bool {
+        let target = NSAppleEventDescriptor(bundleIdentifier: bundleIdentifier)
+        return AEDeterminePermissionToAutomateTarget(
+            target.aeDesc,
+            AEEventClass(typeWildCard),
+            AEEventID(typeWildCard),
+            false
+        ) == noErr
+    }
+
+    /// Résultat du script, ou `nil` si l'app est fermée ou si le script échoue (erreur journalisée).
+    /// Le premier script vers une app déclenche la demande d'autorisation de macOS.
+    @discardableResult
+    static func run(_ source: String, in bundleIdentifier: String, name: String) -> NSAppleEventDescriptor? {
+        guard isRunning(bundleIdentifier) else { return nil }
         var error: NSDictionary?
-        NSAppleScript(source: source)?.executeAndReturnError(&error)
+        let result = NSAppleScript(source: source)?.executeAndReturnError(&error)
         if let error {
-            logger.error("AppleScript \(player.applicationName, privacy: .public) : \(error, privacy: .public)")
+            logger.error("AppleScript \(name, privacy: .public) : \(error, privacy: .public)")
+            return nil
         }
+        return result
     }
 }

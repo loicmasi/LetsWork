@@ -206,12 +206,17 @@ L'adaptateur est un processus enfant de l'app. Si l'app est tuée sans se termin
 | Accessibilité | F2 (event tap) | Réglages Système › Confidentialité et sécurité › Accessibilité |
 | Calendriers (accès complet) | F3 | Onglet Calendrier ou Réglages › Calendrier › « Autoriser… », puis › Calendriers |
 | Accès complet au disque | F4 (lecture des notifications) | Réglages Système › Confidentialité et sécurité › Accès complet au disque › + › LetsWork |
-| Automatisation (Musique, Spotify) | F1, canal de repli | Invite système au premier Apple Event, puis › Automatisation |
+| Automatisation (Musique, Spotify) | F1 : canal de repli ; aléatoire, répétition et « J'aime » de Spotify | Invite système au premier Apple Event, puis › Automatisation |
+| Compte Spotify (OAuth) | F1 : « J'aime » | Réglages › Spotify › « Se connecter à Spotify » |
 
 - **Calendriers** (M3) : demandés depuis l'onglet Calendrier ou Réglages › Calendrier, jamais au lancement.
 - **Accessibilité** (M2) : demandée depuis Réglages › Volume et luminosité › « Autoriser… ». Sans elle, LetsWork n'intercepte rien et les indicateurs de macOS restent affichés. L'app détecte l'autorisation sans redémarrage.
 - **Accès complet au disque** (F4) : à ajouter à la main dans Réglages Système, pour la copie de LetsWork que tu lances (build de développement ou app installée). La lecture démarre d'elle-même dans les 10 s.
-- **Automatisation** (M1) : seulement pour le repli AppleScript, au premier clic sur un contrôle de lecture.
+- **Automatisation** (M1) : pour le repli AppleScript, au premier clic sur un contrôle de lecture ; vers Spotify, au premier clic sur l'aléatoire, la répétition ou « J'aime ».
+- **Compte Spotify** : il faut un compte Premium et une app Spotify à soi.
+  1. Sur [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard), créer une app avec l'API « Web API » et l'URI de redirection `http://127.0.0.1:43219/callback` (en IP : Spotify refuse `localhost`).
+  2. Coller son Client ID dans Réglages › Spotify, puis « Se connecter à Spotify » : le navigateur ouvre la page de Spotify, qui redirige vers LetsWork.
+  3. Le jeton de rafraîchissement est rangé dans le Trousseau (service `dev.projects.letswork.spotify`). Avec la signature ad hoc du Release, macOS ne reconnaît plus LetsWork après chaque réinstallation et demande l'accès à cet élément : répondre « Toujours autoriser ».
 
 **Autorisations et builds de développement** : macOS rattache une autorisation à l'*exigence désignée* de la signature. Pour une signature ad hoc, c'est par défaut l'empreinte du binaire : chaque build perdrait l'autorisation Accessibilité (l'app resterait cochée dans la liste sans être reconnue).
 
@@ -287,7 +292,13 @@ LetsWork/
 │   │   │   ├── AppleScriptSource.swift repli Musique / Spotify
 │   │   │   ├── MediaService.swift      @Observable : choix de la source, pochette, commandes
 │   │   │   ├── MediaCompactView.swift  compact, aperçu, pochette, égaliseur
-│   │   │   └── MediaExpandedView.swift lecteur étendu, progression
+│   │   │   ├── MediaExpandedView.swift lecteur étendu, progression, boutons Spotify
+│   │   │   └── Spotify/
+│   │   │       ├── SpotifyPlayer.swift aléatoire, répétition et URI du titre par AppleScript
+│   │   │       ├── SpotifyAuthorization.swift  OAuth PKCE : page de connexion, requêtes de jeton
+│   │   │       ├── LoopbackRedirectListener.swift  serveur HTTP sur 127.0.0.1 pour la redirection OAuth
+│   │   │       ├── SpotifyWebAPI.swift bibliothèque « Titres likés », jetons, Trousseau
+│   │   │       └── SpotifyService.swift    @Observable : état affiché, « J'aime », compte
 │   │   ├── HUD/
 │   │   │   ├── HUDModel.swift          touches, pas de réglage, volume, état affiché
 │   │   │   ├── MediaKeyTap.swift       event tap qui intercepte et absorbe les touches
@@ -333,6 +344,7 @@ LetsWork/
 │   ├── CalendarTests.swift
 │   ├── NotificationTests.swift
 │   ├── BatteryTests.swift
+│   ├── SpotifyTests.swift
 │   └── GameTests.swift
 ├── Vendor/
 │   ├── mediaremote-adapter/            sous-module git (v0.7.7)
@@ -369,6 +381,7 @@ IslandModel → IslandView (SwiftUI) — animations
 - **HUD** : `MediaKeyTap` (event tap de session, en tête de file) reçoit les événements système `NX_KEYTYPE_*` et les touches 144/145. `HUDService` applique le changement (Core Audio ou DisplayServices), absorbe l'événement pour que macOS n'affiche pas son indicateur, puis `HUDService.onShow` prévient `ActivityCoordinator`, qui affiche l'état `.hud` pendant 1,5 s après la dernière pression. ⌥ seul laisse passer la touche (macOS ouvre le réglage) ; ⌥⇧ règle par pas de 1/64.
 - **Calendrier** : `EventKitProvider` lit les comptes macOS ; `CalendarService` fusionne et filtre les événements d'aujourd'hui à J+7, recalcule l'événement du compact et les alertes au prochain instant utile (début de la fenêtre d'une heure, alerte, début, fin), puis prévient `ActivityCoordinator` (`onUpcomingChange`, `onAlert`). Activité de fond : la lecture si elle est active, sinon la réunion. L'alerte reste 10 s, sauf clic. Rechargement sur `EKEventStoreChanged`, changement de jour et sortie de veille.
 - **Notifications** : `FileChangeWatcher` (kqueue, sur le dossier, `db` et `db-wal` ; FSEvents ne remonte rien pour ce dossier protégé) signale une écriture dans la base, avec une vérification de secours toutes les 10 s ; `NotificationService` lit les enregistrements plus récents que le dernier vu, les décode et prévient `ActivityCoordinator` (`onNotification`), qui affiche l'état `.notification` 5 s et met les suivantes en file.
+- **Spotify** : `MediaService` prévient `SpotifyService` à chaque changement de titre. Si la lecture vient de Spotify, l'aléatoire, la répétition et l'URI du titre sont relus par AppleScript (`SpotifyPlayer`), puis le « J'aime » par l'API Web (`SpotifyWebAPI`, jeton renouvelé à la demande). L'onglet Multimédia relit les deux à chaque ouverture. La connexion du compte ouvre `LoopbackRedirectListener` sur 127.0.0.1:43219 le temps de recevoir le code d'autorisation.
 - **Batterie** : `BatteryService` lit la batterie interne (`IOPSCopyPowerSourcesInfo`) et s'abonne à `kIOPSNotifyAnyPowerSource` (`notify_register_dispatch`), sans interrogation périodique. `LowBatteryWatch` en déduit le branchement, le débranchement et le passage sous un seuil d'alerte ; `BatteryService.onEvent` prévient `ActivityCoordinator`, qui affiche l'indicateur de charge (`.charging`, 3 s) ou l'alerte (`.lowBattery`, 10 s, sauf clic). Le branchement retire l'alerte.
 - **Clavier pendant une partie** : `IslandPanel` ne peut devenir fenêtre clé que si `acceptsKeyboardFocus` est vrai. Pendant une partie de Glouton, `IslandModel` le demande à `IslandWindowController` (`onKeyboardFocusChange`), qui rend ensuite le clavier à l'app au premier plan. Les touches passent par `IslandPanel.sendEvent` puis `IslandModel.handleKey` ; les raccourcis avec ⌘ ne sont pas interceptés.
 
@@ -413,6 +426,10 @@ Tout le code embarqué (dont `MediaRemoteAdapter.framework`) doit être signé a
 | Les bannières de macOS s'affichent en plus de l'Island | Mode Concentration « LetsWork » inactif | Le créer sans aucune app autorisée et l'activer depuis le Centre de contrôle |
 | Plusieurs processus `mediaremote-adapter.pl` | Adaptateurs orphelins d'une instance tuée | Supprimés au prochain lancement de l'app (section 7.4) |
 | En repli, les boutons de lecture n'ont aucun effet | Autorisation Automatisation refusée | Réglages Système › Confidentialité et sécurité › Automatisation |
+| Les boutons aléatoire et répétition de Spotify n'ont aucun effet | Automatisation vers Spotify refusée | Réglages Système › Confidentialité et sécurité › Automatisation › LetsWork › Spotify |
+| Le cœur ouvre les réglages au lieu de liker | Compte Spotify non connecté, ou déconnecté après un jeton révoqué | Réglages › Spotify › « Se connecter à Spotify » ; le message d'erreur s'y affiche |
+| La page de Spotify affiche `INVALID_CLIENT` | Client ID erroné, ou URI de redirection absente de l'app Spotify | Recopier le Client ID ; déclarer exactement `http://127.0.0.1:43219/callback` |
+| « Spotify a refusé l'accès (403) » | Propriétaire de l'app sans Premium, ou compte absent de « User Management » | Vérifier l'abonnement ; ajouter le compte dans l'onglet « User Management » de l'app Spotify |
 | `cmake` échoue sur des fichiers manquants | Sous-modules de l'adaptateur absents | `git submodule update --init --recursive` |
 | Test de l'adaptateur ≠ 0 | Chemins relatifs, ou macOS a de nouveau restreint MediaRemote | Utiliser des chemins absolus ; consulter les issues du projet ; s'appuyer sur le repli AppleScript |
 | L'Island apparaît sous la barre de menus | Niveau de fenêtre trop bas | Vérifier `level` dans `IslandPanel` |

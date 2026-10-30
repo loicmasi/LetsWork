@@ -26,9 +26,16 @@ final class MediaService {
     private(set) var accentColor: NSColor?
     private(set) var sourceApp: SourceApp?
 
+    /// Aléatoire, répétition et « J'aime » quand la lecture vient de Spotify.
+    let spotify = SpotifyService()
+
     /// Nuances de la pochette pour la vague de la barre de progression.
     var wavePalette: WavePalette {
         WavePalette(accent: accentColor ?? .white)
+    }
+
+    var isSpotifySource: Bool {
+        nowPlaying?.sourceBundleIdentifier == SpotifyPlayer.bundleIdentifier
     }
 
     /// Appelé à chaque changement d'état de lecture, avec l'état précédent.
@@ -127,6 +134,9 @@ final class MediaService {
         }
         if update?.sourceBundleIdentifier != previous?.sourceBundleIdentifier {
             sourceApp = update?.sourceBundleIdentifier.flatMap(SourceApp.init(bundleIdentifier:))
+        }
+        if update?.trackIdentity != previous?.trackIdentity {
+            spotify.trackDidChange(isSpotify: isSpotifySource)
         }
         onChange?(previous, update)
     }
